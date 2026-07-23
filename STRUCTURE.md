@@ -10,7 +10,7 @@
 │   └── api/admin/session/
 │       └── route.ts              # login (POST), session check (GET), logout (DELETE)
 ├── lib/
-│   ├── data.ts                   # types, DEFAULTS, localStorage layer, rub rate fetch
+│   ├── data.ts                   # types, DEFAULTS, localStorage cache, remote load/save, rub rate fetch
 │   ├── i18n.ts                   # EN/RU dictionary
 │   └── config.ts                 # feature flags (grain, spotlight, counters, admin link)
 ├── public/assets/

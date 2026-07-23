@@ -4,12 +4,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Lenis from 'lenis';
 import { ArrowsClockwise, Browser, Code, Robot } from '@phosphor-icons/react';
-import { loadData, fetchRub, DEFAULTS, SiteData, LogEntry } from '@/lib/data';
+import { loadData, loadRemote, saveData, fetchRub, DEFAULTS, SiteData, LogEntry } from '@/lib/data';
 import { T, Lang } from '@/lib/i18n';
 import { config } from '@/lib/config';
 
+// one slide of a card carousel: video or photo
+interface Media { kind: 'video' | 'img'; src: string }
 interface Item {
-  id: string; imgs: string[]; video: string | null;
+  id: string; media: Media[];
   title: string; link: string; sub: string; cat: string;
   metaDim: string; metaMain: string; metaSub: string; place: string;
   changelog: LogEntry[];
@@ -49,7 +51,6 @@ export default function Page() {
   const modalOpen = useRef(false);
   const toastT = useRef<ReturnType<typeof setTimeout>>();
   const closeT = useRef<ReturnType<typeof setTimeout>>();
-  const ptrType = useRef<string>('mouse');
   const fine = useRef(false);
   const reduced = useRef(false);
 
@@ -73,12 +74,15 @@ export default function Page() {
     else { lenisRef.current?.start(); document.body.style.overflow = ''; }
   }, [modal]);
 
-  // load data + language + rate, refresh on focus to pick up admin edits
+  // load data + language + rate, refresh on focus to pick up admin edits.
+  // local cache paints first, then the shared server copy takes over
   useEffect(() => {
     setData(loadData());
     setLangState((localStorage.getItem('zx_lang') as Lang) || 'en');
     fetchRub().then(setRub);
-    const onFocus = () => setData(loadData());
+    const pull = () => loadRemote().then(d => { if (d) { setData(d); saveData(d); } });
+    pull();
+    const onFocus = () => pull();
     window.addEventListener('focus', onFocus);
     return () => window.removeEventListener('focus', onFocus);
   }, []);
@@ -222,30 +226,6 @@ export default function Page() {
     toastT.current = setTimeout(() => setToast(''), 1700);
   }, []);
 
-  // magnetic pull toward the cursor + press scale composed in one transform.
-  // touch is skipped: it has no leave event, so an offset would stick after a tap
-  const magReset = (el: HTMLElement) => { delete el.dataset.press; el.style.transform = ''; };
-  const magMove = (e: React.MouseEvent<HTMLElement>) => {
-    if (!fine.current || reduced.current || ptrType.current === 'touch') return;
-    const el = e.currentTarget, r = el.getBoundingClientRect();
-    const x = (e.clientX - r.left - r.width / 2) * .2, y = (e.clientY - r.top - r.height / 2) * .3;
-    el.style.transform = 'translate3d(' + x + 'px,' + y + 'px,0)' + (el.dataset.press ? ' scale(.97)' : '');
-  };
-  const magLeave = (e: React.MouseEvent<HTMLElement>) => magReset(e.currentTarget);
-  const magDown = (e: React.PointerEvent<HTMLElement>) => {
-    ptrType.current = e.pointerType;
-    if (e.pointerType === 'touch' || !fine.current || reduced.current) return;
-    const el = e.currentTarget;
-    el.dataset.press = '1';
-    if (el.style.transform) el.style.transform = el.style.transform.replace(/ ?scale\([^)]*\)/, '') + ' scale(.97)';
-  };
-  const magUp = (e: React.PointerEvent<HTMLElement>) => {
-    if (e.pointerType === 'touch') { magReset(e.currentTarget); return; }
-    const el = e.currentTarget;
-    delete el.dataset.press;
-    el.style.transform = el.style.transform.replace(/ ?scale\([^)]*\)/, '');
-  };
-  const mag = { onMouseMove: magMove, onMouseLeave: magLeave, onPointerDown: magDown, onPointerUp: magUp, onPointerCancel: (e: React.PointerEvent<HTMLElement>) => magReset(e.currentTarget) };
   const spotMove = (e: React.MouseEvent<HTMLElement>) => {
     const el = e.currentTarget, r = el.getBoundingClientRect();
     el.style.setProperty('--mx', e.clientX - r.left + 'px');
@@ -282,8 +262,13 @@ export default function Page() {
       const usd = /^\d/.test(String(w.price).trim()) ? '$' + w.price : w.price;
       const rubP = amt > 0 ? '≈' + (Math.round(amt * rub / 100) * 100).toLocaleString('ru-RU') + ' ₽' : '';
       const pics = w.imgs?.length ? w.imgs : w.img ? [w.img] : [];
+      // video goes first, photos after it - all in one carousel
+      const media: Media[] = [
+        ...(w.video ? [{ kind: 'video' as const, src: w.video }] : []),
+        ...pics.map(src => ({ kind: 'img' as const, src }))
+      ];
       return {
-        id: w.id, imgs: pics, video: w.video || null,
+        id: w.id, media,
         title: ru && w.titleRu ? w.titleRu : w.title, link: w.link,
         sub: ru && w.descRu ? w.descRu : w.desc, cat: w.date || '',
         metaDim: t.madeFor, metaMain: usd, metaSub: rubP, place: t.photoSoon,
@@ -291,7 +276,7 @@ export default function Page() {
       };
     }),
     ...data.projects.map(p => ({
-      id: p.id, imgs: p.img ? [p.img] : [], video: null,
+      id: p.id, media: p.img ? [{ kind: 'img' as const, src: p.img }] : [],
       title: p.name, link: p.link, sub: '',
       cat: ru && p.roleRu ? p.roleRu : p.role,
       metaDim: '', metaMain: p.from + ' - ' + p.to, metaSub: '', place: t.team,
@@ -343,7 +328,7 @@ export default function Page() {
             <a href="#contact" className="navlnk">{t.navC}</a>
           </div>
           <span onClick={() => setLang(ru ? 'en' : 'ru')} className="langbtn" style={{ cursor: 'pointer' }}>{ru ? 'EN' : 'RU'}</span>
-          <a href={tgHref} target="_blank" className="chatbtn" {...mag}>
+          <a href={tgHref} target="_blank" className="chatbtn">
             <img src="https://cdn.simpleicons.org/telegram/f3f3f3" alt="" style={{ width: 14, height: 14, display: 'block', flex: 'none' }} />
             {t.chat}
           </a>
@@ -356,8 +341,8 @@ export default function Page() {
           <h1 className="in0" style={{ margin: 0, fontSize: 'clamp(38px,5.2vw,60px)', fontWeight: 400, lineHeight: 1.05, letterSpacing: '-0.011em', maxWidth: '17ch', textWrap: 'balance' }}>{t.heroT}</h1>
           <div className="in1" style={{ marginTop: 14, fontSize: 18, lineHeight: 1.4, color: '#9c9c9c', maxWidth: '46ch', textWrap: 'balance' }}>{t.heroSub}</div>
           <div className="in2" style={{ display: 'flex', gap: 12, marginTop: 24 }}>
-            <a href={tgHref} target="_blank" className="pill" {...mag}>{t.start} ↗</a>
-            <a href="#projects" className="ghost" {...mag}>{t.view} ↓</a>
+            <a href={tgHref} target="_blank" className="pill">{t.start} ↗</a>
+            <a href="#projects" className="ghost">{t.view} ↓</a>
           </div>
         </div>
         {config.showMap && (
@@ -423,8 +408,9 @@ export default function Page() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(340px,1fr))', gap: 22 }}>
             {items.map((w, i) => {
               const on = revealAll || revealed[w.id];
-              const ci = (cardPic[w.id] || 0) % Math.max(w.imgs.length, 1);
-              const hasCar = w.imgs.length > 1 && !w.video;
+              const ci = (cardPic[w.id] || 0) % Math.max(w.media.length, 1);
+              const hasCar = w.media.length > 1;
+              const cur = w.media[ci];
               return (
                 <a key={w.id} data-card={w.id} data-reveal={w.id} className="card"
                   onClick={() => openModal(w, ci)}
@@ -432,16 +418,18 @@ export default function Page() {
                   onMouseLeave={config.spotlight ? spotLeave : undefined}
                   style={{ opacity: on ? 1 : 0, transform: on ? undefined : `translate3d(${i % 2 ? 36 : -36}px,0,0)` }}>
                   {config.spotlight && <span style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 2, background: 'radial-gradient(280px circle at var(--mx,-300px) var(--my,-300px),rgba(255,255,255,.05),transparent 65%)' }} />}
-                  {w.video ? (
-                    <video ref={vidStart} src={w.video} loop muted playsInline preload="none" style={{ width: '100%', aspectRatio: '16/10', objectFit: 'cover', display: 'block', borderBottom: '1px solid #212121', background: '#000' }} />
-                  ) : w.imgs.length ? (
+                  {cur ? (
                     <span style={{ position: 'relative', display: 'block', borderBottom: '1px solid #212121', overflow: 'hidden' }}>
-                      <img key={ci} className="imgfade" src={w.imgs[ci]} loading="lazy" alt="" style={{ width: '100%', aspectRatio: '16/10', objectFit: 'cover', display: 'block' }} />
+                      {cur.kind === 'video' ? (
+                        <video key={ci} ref={vidStart} className="imgfade" src={cur.src} loop muted playsInline preload="none" style={{ width: '100%', aspectRatio: '16/10', objectFit: 'cover', display: 'block', background: '#000' }} />
+                      ) : (
+                        <img key={ci} className="imgfade" src={cur.src} loading="lazy" alt="" style={{ width: '100%', aspectRatio: '16/10', objectFit: 'cover', display: 'block' }} />
+                      )}
                       {hasCar && <>
-                        <span className="carr" style={{ left: 8 }} onClick={e => { e.stopPropagation(); e.preventDefault(); setCardPic(c => ({ ...c, [w.id]: (ci - 1 + w.imgs.length) % w.imgs.length })); }}>‹</span>
-                        <span className="carr" style={{ right: 8 }} onClick={e => { e.stopPropagation(); e.preventDefault(); setCardPic(c => ({ ...c, [w.id]: (ci + 1) % w.imgs.length })); }}>›</span>
+                        <span className="carr" style={{ left: 8 }} onClick={e => { e.stopPropagation(); e.preventDefault(); setCardPic(c => ({ ...c, [w.id]: (ci - 1 + w.media.length) % w.media.length })); }}>‹</span>
+                        <span className="carr" style={{ right: 8 }} onClick={e => { e.stopPropagation(); e.preventDefault(); setCardPic(c => ({ ...c, [w.id]: (ci + 1) % w.media.length })); }}>›</span>
                         <span style={{ position: 'absolute', left: 0, right: 0, bottom: 8, display: 'flex', justifyContent: 'center', gap: 5 }}>
-                          {w.imgs.map((_, di) => <span key={di} style={{ width: 6, height: 6, borderRadius: 99, background: di === ci ? '#f3f3f3' : 'rgba(255,255,255,.35)', transition: 'background .25s ease' }} />)}
+                          {w.media.map((_, di) => <span key={di} style={{ width: 6, height: 6, borderRadius: 99, background: di === ci ? '#f3f3f3' : 'rgba(255,255,255,.35)', transition: 'background .25s ease' }} />)}
                         </span>
                       </>}
                     </span>
@@ -535,10 +523,10 @@ export default function Page() {
             <h2 style={{ margin: 0, fontSize: 'clamp(30px,3.4vw,44px)', fontWeight: 400, lineHeight: 1.07, letterSpacing: '-0.007em', maxWidth: '22ch', textWrap: 'balance' }}>{t.ctH}</h2>
             <div style={{ marginTop: 10, fontSize: 16, color: '#9c9c9c' }}>{t.ctSub}</div>
             <div style={{ display: 'flex', gap: 12, marginTop: 28 }}>
-              <a href={tgHref} target="_blank" className="pill" {...mag}>
+              <a href={tgHref} target="_blank" className="pill">
                 <img src="https://cdn.simpleicons.org/telegram/000000" alt="" style={{ width: 15, height: 15, display: 'block' }} />Telegram
               </a>
-              <a href={ghHref} target="_blank" className="ghost" {...mag}>
+              <a href={ghHref} target="_blank" className="ghost">
                 <img src="https://cdn.simpleicons.org/github/f3f3f3" alt="" style={{ width: 15, height: 15, display: 'block' }} />GitHub
               </a>
             </div>
@@ -570,22 +558,29 @@ export default function Page() {
         return (
         <div onClick={closeModal} style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(0,0,0,.66)', backdropFilter: ovBlur, WebkitBackdropFilter: ovBlur, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, opacity: closing ? 0 : undefined, transition: 'opacity .18s ease', animation: closing || rm ? 'none' : 'zxfade .3s ease both' }}>
           <div onClick={e => e.stopPropagation()} data-lenis-prevent style={{ width: 'min(660px,94vw)', maxHeight: '86vh', overflow: 'auto', background: '#151515', border: '1px solid #2a2a2a', borderRadius: 14, opacity: closing ? 0 : undefined, transform: closing && !rm ? 'translateY(8px) scale(.98)' : undefined, transition: `opacity .18s ease, transform .18s ${EASE}`, animation: closing || rm ? 'none' : `zxmodal .45s ${EASE} both` }}>
-            {modal.video ? (
-              <video ref={vidStart} src={modal.video} loop muted playsInline preload="none" style={{ width: '100%', aspectRatio: '16/9', objectFit: 'cover', display: 'block', borderBottom: '1px solid #212121', borderRadius: '13px 13px 0 0', background: '#000' }} />
-            ) : modal.imgs.length > 0 && (
+            {modal.media.length > 0 && (() => {
+              const mi = Math.min(pic, modal.media.length - 1);
+              const cur = modal.media[mi];
+              const round = '13px 13px 0 0';
+              return (
               <div style={{ position: 'relative', borderBottom: '1px solid #212121' }}>
-                <img key={Math.min(pic, modal.imgs.length - 1)} className="imgfade" src={modal.imgs[Math.min(pic, modal.imgs.length - 1)]} alt="" style={{ width: '100%', aspectRatio: '16/9', objectFit: 'cover', display: 'block', borderRadius: '13px 13px 0 0' }} />
-                {modal.imgs.length > 1 && <>
-                  <span className="marr" style={{ left: 10, cursor: 'pointer' }} onClick={e => { e.stopPropagation(); setPic(p => (p - 1 + modal.imgs.length) % modal.imgs.length); }}>‹</span>
-                  <span className="marr" style={{ right: 10, cursor: 'pointer' }} onClick={e => { e.stopPropagation(); setPic(p => (p + 1) % modal.imgs.length); }}>›</span>
+                {cur.kind === 'video' ? (
+                  <video key={mi} ref={vidStart} className="imgfade" src={cur.src} loop muted playsInline preload="none" style={{ width: '100%', aspectRatio: '16/9', objectFit: 'cover', display: 'block', borderRadius: round, background: '#000' }} />
+                ) : (
+                  <img key={mi} className="imgfade" src={cur.src} alt="" style={{ width: '100%', aspectRatio: '16/9', objectFit: 'cover', display: 'block', borderRadius: round }} />
+                )}
+                {modal.media.length > 1 && <>
+                  <span className="marr" style={{ left: 10, cursor: 'pointer' }} onClick={e => { e.stopPropagation(); setPic((mi - 1 + modal.media.length) % modal.media.length); }}>‹</span>
+                  <span className="marr" style={{ right: 10, cursor: 'pointer' }} onClick={e => { e.stopPropagation(); setPic((mi + 1) % modal.media.length); }}>›</span>
                   <span style={{ position: 'absolute', left: 0, right: 0, bottom: 10, display: 'flex', justifyContent: 'center', gap: 6 }}>
-                    {modal.imgs.map((_, i) => (
-                      <span key={i} onClick={e => { e.stopPropagation(); setPic(i); }} style={{ width: 7, height: 7, borderRadius: 99, cursor: 'pointer', background: i === pic ? '#f3f3f3' : 'rgba(255,255,255,.35)', transform: i === pic ? 'scale(1.25)' : 'scale(1)', transition: 'background .2s ease, transform .2s ease' }} />
+                    {modal.media.map((_, i) => (
+                      <span key={i} onClick={e => { e.stopPropagation(); setPic(i); }} style={{ width: 7, height: 7, borderRadius: 99, cursor: 'pointer', background: i === mi ? '#f3f3f3' : 'rgba(255,255,255,.35)', transform: i === mi ? 'scale(1.25)' : 'scale(1)', transition: 'background .2s ease, transform .2s ease' }} />
                     ))}
                   </span>
                 </>}
               </div>
-            )}
+              );
+            })()}
             <div style={{ padding: '26px 28px 28px' }}>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 14 }}>
                 <span style={{ fontSize: 24, letterSpacing: '-0.01em' }}>{modal.title}</span>

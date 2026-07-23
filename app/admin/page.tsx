@@ -3,7 +3,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import {
-  loadData, saveData, resetData,
+  loadData, saveData, resetData, loadRemote, saveRemote, DEFAULTS,
   SiteData, Service, Work, TeamProject, FaqItem, LogEntry
 } from '@/lib/data';
 
@@ -36,15 +36,39 @@ export default function Admin() {
   const drag = useRef<{ list: keyof SiteData; id: string } | null>(null);
   const busy = useRef(false);
 
+  // defined before the effects so they can call it
+  const show = (msg: string) => {
+    clearTimeout(flashT.current);
+    setFlash(msg);
+    flashT.current = setTimeout(() => setFlash(''), 1700);
+  };
+
   useEffect(() => {
-    const d = loadData();
-    setData(d);
-    setForm({ about: d.about, aboutRu: d.aboutRu || '' });
-    // ask the server if the session cookie is still valid
-    fetch('/api/admin/session')
-      .then(r => r.json())
-      .then(j => setAuth(!!j.ok))
-      .catch(() => setAuth(false));
+    const local = loadData();
+    setData(local);
+    setForm({ about: local.about, aboutRu: local.aboutRu || '' });
+    (async () => {
+      // ask the server if the session cookie is still valid, and pull shared content
+      const [remote, ok] = await Promise.all([
+        loadRemote(),
+        fetch('/api/admin/session').then(r => r.json()).then(j => !!j.ok).catch(() => false)
+      ]);
+      setAuth(ok);
+      if (remote) {
+        setData(remote); saveData(remote);
+        setForm({ about: remote.about, aboutRu: remote.aboutRu || '' });
+      } else if (ok) {
+        // server is still empty: upload what this browser already has, so
+        // nothing added before goes away. skip untouched demo content, or a
+        // fresh browser would push the demo over real work
+        if (JSON.stringify(local) === JSON.stringify(DEFAULTS)) {
+          show('server is empty, demo content not uploaded');
+        } else {
+          const r = await saveRemote(local);
+          show(r.ok ? 'content uploaded to the server' : 'upload failed: ' + r.err);
+        }
+      }
+    })();
     return () => clearTimeout(flashT.current);
   }, []);
 
@@ -59,14 +83,12 @@ export default function Admin() {
 
   const locked = wait > 0;
 
-  const show = (msg: string) => {
-    clearTimeout(flashT.current);
-    setFlash(msg);
-    flashT.current = setTimeout(() => setFlash(''), 1700);
-  };
+  // local write is the fast path, the server copy is what other browsers read
   const persist = (nd: SiteData, msg = 'saved') => {
     if (!saveData(nd)) { show('save failed: storage full, remove some images/video'); return false; }
-    setData(nd); show(msg); return true;
+    setData(nd); show(msg);
+    saveRemote(nd).then(r => { if (!r.ok) show('saved here only, server: ' + r.err); });
+    return true;
   };
   const F = (k: string) => form[k] || '';
   const onF = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
@@ -482,8 +504,9 @@ export default function Admin() {
                 if (!confirmReset) { setConfirmReset(true); return; }
                 resetData();
                 const nd = loadData();
-                setData(nd); setConfirmReset(false);
+                setConfirmReset(false);
                 setForm({ telegram: nd.telegram, github: nd.github, email: nd.email });
+                persist(nd, 'reset to defaults');
               }} style={{ border: '1px solid rgba(255,107,107,.4)', color: '#ff6b6b', borderRadius: 9999, padding: '9px 20px', fontSize: 14, cursor: 'pointer', userSelect: 'none', display: 'inline-block' }}>
                 {confirmReset ? 'Sure? Click again' : 'Reset all content to defaults'}
               </span>

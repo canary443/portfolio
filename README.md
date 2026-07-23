@@ -1,6 +1,6 @@
 # aimworkspace
 
-personal portfolio site. dark single page + a password gated admin panel. frontend only, content lives in localStorage.
+personal portfolio site. dark single page + a password gated admin panel. content lives in a vercel blob store, with localStorage as a local cache.
 
 ## stack
 
@@ -27,4 +27,4 @@ copy `.env.example` to `.env.local` and set:
 
 ## notes
 
-the admin panel has no database, it writes content to the browser's localStorage. the login check and rate limit run server side.
+the admin panel writes content to the browser's localStorage and to `site.json` in the vercel blob store, so every browser sees the same site. the login check, rate limit and the content write run server side.

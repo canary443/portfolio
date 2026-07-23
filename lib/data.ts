@@ -77,6 +77,31 @@ export function saveData(d: SiteData): boolean {
 }
 export function resetData() { localStorage.setItem(KEY, JSON.stringify(DEFAULTS)); }
 
+// shared content on the server (vercel blob). localStorage stays as a local
+// cache so the first paint is instant, but the server copy wins.
+export async function loadRemote(): Promise<SiteData | null> {
+  try {
+    const r = await fetch('/api/content', { cache: 'no-store' });
+    const j = await r.json();
+    if (j?.data && typeof j.data === 'object') return { ...structuredClone(DEFAULTS), ...j.data };
+  } catch {}
+  return null;
+}
+
+export async function saveRemote(d: SiteData): Promise<{ ok: boolean; err: string }> {
+  try {
+    const r = await fetch('/api/content', {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(d)
+    });
+    const j = await r.json().catch(() => ({}));
+    return { ok: r.ok && !!j.ok, err: j.err || ('http ' + r.status) };
+  } catch {
+    return { ok: false, err: 'network error' };
+  }
+}
+
 // usd -> rub rate, cached 12h
 export async function fetchRub(): Promise<number> {
   try {
