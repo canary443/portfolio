@@ -38,6 +38,7 @@ export default function Page() {
   const [rub, setRub] = useState(95);
   const [closing, setClosing] = useState(false);
   const [safari, setSafari] = useState(false);
+  const [customCursor, setCustomCursor] = useState(false);
 
   const cursorRef = useRef<HTMLDivElement>(null);
   const handsRef = useRef<HTMLImageElement>(null);
@@ -58,7 +59,9 @@ export default function Page() {
     // webkit (safari + all ios browsers) needs cheaper compositing: no blend modes
     const iOS = /iphone|ipad|ipod/i.test(ua) || (/mac/i.test(ua) && navigator.maxTouchPoints > 1);
     const desktopSafari = /safari/i.test(ua) && !/chrome|chromium|crios|fxios|edg|android/i.test(ua);
-    setSafari(iOS || desktopSafari);
+    const isSafari = iOS || desktopSafari;
+    setSafari(isSafari);
+    setCustomCursor(!isSafari && fine.current && !reduced.current);
   }, []);
 
   // modal open: freeze scroll under it
@@ -135,16 +138,18 @@ export default function Page() {
 
   // cursor dot: lerped follow, loop sleeps when settled
   useEffect(() => {
-    if (!window.matchMedia('(pointer:fine)').matches) return;
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    let mx = -100, my = -100, tx = -100, ty = -100, cs = 1, ts = 1, raf = 0, on = false;
-    const loop = () => {
-      mx += (tx - mx) * .16; my += (ty - my) * .16; cs += (ts - cs) * .18;
+    if (!customCursor) return;
+    let mx = -100, my = -100, tx = -100, ty = -100, cs = 1, ts = 1, raf = 0, on = false, last = 0;
+    // time-based lerp so the trail feels the same at 60hz (safari) and 120hz
+    const loop = (now: number) => {
+      const dt = last ? Math.min(now - last, 50) : 16.67; last = now;
+      const kp = 1 - Math.pow(1 - .16, dt / 16.67), ks = 1 - Math.pow(1 - .18, dt / 16.67);
+      mx += (tx - mx) * kp; my += (ty - my) * kp; cs += (ts - cs) * ks;
       if (cursorRef.current) cursorRef.current.style.transform = 'translate3d(' + (mx - 4.5) + 'px,' + (my - 4.5) + 'px,0) scale(' + cs + ')';
       if (Math.abs(tx - mx) < .1 && Math.abs(ty - my) < .1 && Math.abs(ts - cs) < .01) { on = false; return; }
       raf = requestAnimationFrame(loop);
     };
-    const wake = () => { if (!on) { on = true; raf = requestAnimationFrame(loop); } };
+    const wake = () => { if (!on) { on = true; last = 0; raf = requestAnimationFrame(loop); } };
     const onMove = (e: MouseEvent) => {
       tx = e.clientX; ty = e.clientY;
       const t = (e.target as HTMLElement | null)?.closest?.('a,button,input,textarea,[data-card]');
@@ -160,7 +165,7 @@ export default function Page() {
       document.documentElement.removeEventListener('mouseleave', onLeave);
       cancelAnimationFrame(raf);
     };
-  }, []);
+  }, [customCursor]);
 
   // reveal cards on scroll; re-observes when data changes so items added
   // via the focus reload also animate in
@@ -317,7 +322,7 @@ export default function Page() {
   const navBlur = sc ? (safari ? 'blur(10px)' : 'blur(16px) saturate(1.6)') : 'none';
 
   return (
-    <div style={{ minHeight: '100vh', overflowX: 'clip' }}>
+    <div className="site-page" data-custom-cursor={customCursor ? 'true' : undefined} style={{ minHeight: '100vh', overflowX: 'clip' }}>
       {/* nav */}
       <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100, display: 'flex', justifyContent: 'center', padding: sc ? '12px 16px 0' : '0px', transition: 'padding .6s ' + EASE, pointerEvents: 'none' }}>
         <div style={{
@@ -620,8 +625,8 @@ export default function Page() {
         <span style={{ background: '#f3f3f3', color: '#101010', borderRadius: 9999, padding: '9px 18px', fontSize: 13, opacity: toast ? 1 : 0, transform: toast ? 'translateY(0)' : 'translateY(14px)', transition: `opacity .35s ease, transform .4s ${EASE}` }}>{toast || ' '}</span>
       </div>
 
-      {/* cursor dot: difference blend everywhere except safari, where it costs frames */}
-      <div ref={cursorRef} style={{ position: 'fixed', left: 0, top: 0, width: 9, height: 9, borderRadius: 99, background: '#f3f3f3', pointerEvents: 'none', zIndex: 9999, opacity: 0, transform: 'translate3d(-100px,-100px,0)', willChange: 'transform', transition: 'opacity .25s ease', ...(safari ? {} : { mixBlendMode: 'difference' as const }) }} />
+      {/* cursor dot: safari uses the native cursor to avoid frame lag */}
+      {customCursor && <div ref={cursorRef} style={{ position: 'fixed', left: 0, top: 0, width: 9, height: 9, borderRadius: 99, background: '#f3f3f3', pointerEvents: 'none', zIndex: 9999, opacity: 0, transform: 'translate3d(-100px,-100px,0)', willChange: 'transform', transition: 'opacity .25s ease', mixBlendMode: 'difference' }} />}
     </div>
   );
 }

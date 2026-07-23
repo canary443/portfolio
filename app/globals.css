@@ -35,9 +35,9 @@ a { color: #f3f3f3; }
 a:hover { color: #ffffff; }
 ::selection { background: #f3f3f3; color: #101010; }
 
-/* custom cursor only when the dot is actually rendered */
+/* hide the native cursor only when the site dot is active */
 @media (pointer: fine) and (prefers-reduced-motion: no-preference) {
-  * { cursor: none !important; }
+  .site-page[data-custom-cursor="true"] * { cursor: none !important; }
 }
 
 /* hover states (inline styles cannot do :hover) */
