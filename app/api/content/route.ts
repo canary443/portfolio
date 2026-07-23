@@ -1,32 +1,21 @@
 // site content api: one json file in vercel blob, shared by every browser.
 // get is public (the site reads it), put needs the admin cookie.
 import { NextRequest, NextResponse } from 'next/server';
-import { get, put } from '@vercel/blob';
+import { put } from '@vercel/blob';
 import { validToken } from '@/lib/session';
+import { readContent, FILE } from '@/lib/content';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const FILE = 'site.json';
 // vercel caps a function request body at ~4.5mb
 const MAX_BYTES = 4_000_000;
 
 const noStore = { 'cache-control': 'no-store' };
 
 export async function GET() {
-  if (!process.env.BLOB_READ_WRITE_TOKEN) {
-    return NextResponse.json({ data: null, err: 'no blob store' }, { headers: noStore });
-  }
-  try {
-    // useCache off so an edit shows up right after saving
-    const res = await get(FILE, { access: 'private', useCache: false });
-    if (!res) return NextResponse.json({ data: null }, { headers: noStore });
-    const text = await new Response(res.stream).text();
-    return NextResponse.json({ data: JSON.parse(text) }, { headers: noStore });
-  } catch {
-    // no file yet, or bad json: the site falls back to defaults
-    return NextResponse.json({ data: null }, { headers: noStore });
-  }
+  // null when there is no file yet: the site falls back to defaults
+  return NextResponse.json({ data: await readContent() }, { headers: noStore });
 }
 
 export async function PUT(req: NextRequest) {
