@@ -6,6 +6,7 @@ import {
   loadData, saveData, resetData, loadRemote, saveRemote, DEFAULTS,
   SiteData, Service, Work, TeamProject, FaqItem, LogEntry
 } from '@/lib/data';
+import { shrinkImage, dataUrlKb } from '@/lib/img';
 
 type Sec = 'about' | 'services' | 'works' | 'projects' | 'faq' | 'settings';
 type Form = Record<string, string>;
@@ -140,34 +141,40 @@ export default function Admin() {
     persist({ ...data, [list]: arr } as SiteData, 'reordered');
   };
 
-  const readImgs = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // photos are scaled down here, so a big phone photo is fine
+  const readImgs = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []).slice(0, 8);
+    e.target.value = '';
     if (!files.length) return;
-    if (files.some(f => f.size > 400000)) { show('file too big, max ~400kb each'); return; }
-    // count every reader that finishes (ok or failed) so one bad file does not stall the rest
-    let done = 0, failed = false; const out: string[] = [];
-    const finish = () => {
-      if (++done < files.length) return;
-      const ok = out.filter(Boolean);
-      if (ok.length) setImgs(p => [...p, ...ok]);
-      if (failed) show('some images could not be read');
-    };
-    files.forEach((f, i) => {
-      const r = new FileReader();
-      r.onload = () => { out[i] = r.result as string; finish(); };
-      r.onerror = () => { failed = true; finish(); };
-      r.readAsDataURL(f);
-    });
-    e.target.value = '';
+    show('adding photos...');
+    const done = await Promise.all(files.map(f => shrinkImage(f, 1400).catch(() => '')));
+    const ok = done.filter(Boolean);
+    if (ok.length) setImgs(p => [...p, ...ok]);
+    if (ok.length < files.length) show('some images could not be read');
+    else show(ok.length + ' photo(s) added, ' + dataUrlKb(ok.join('')) + 'kb');
   };
-  const readIcon = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // service icons stay png so a transparent logo keeps its background
+  const readIcon = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
-    if (!f) return;
-    if (f.size > 400000) { show('file too big, max ~400kb'); return; }
-    const r = new FileReader();
-    r.onload = () => setIcon(r.result as string);
-    r.readAsDataURL(f);
     e.target.value = '';
+    if (!f) return;
+    try {
+      const src = await shrinkImage(f, 128, 'image/png');
+      setIcon(src);
+      show('icon added, ' + dataUrlKb(src) + 'kb');
+    } catch { show('image could not be read'); }
+  };
+  // team project photo: a real photo, so jpeg
+  const readPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    e.target.value = '';
+    if (!f) return;
+    show('adding photo...');
+    try {
+      const src = await shrinkImage(f, 1400);
+      setIcon(src);
+      show('photo added, ' + dataUrlKb(src) + 'kb');
+    } catch { show('image could not be read'); }
   };
   const readVideo = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -443,7 +450,7 @@ export default function Admin() {
                 </div>
                 {inp('link', 'link (optional)')}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 13, color: '#9c9c9c', flexWrap: 'wrap' }}>
-                  photo: <input type="file" accept="image/*" onChange={readIcon} style={{ fontSize: 12, color: '#9c9c9c' }} />
+                  photo: <input type="file" accept="image/*" onChange={readPhoto} style={{ fontSize: 12, color: '#9c9c9c' }} />
                   {icon && <><img src={icon} alt="" style={{ width: 52, height: 34, objectFit: 'cover', borderRadius: 6, border: '1px solid #212121' }} /><span className="adel" onClick={() => setIcon(null)}>clear</span></>}
                 </div>
                 {logEditor}
