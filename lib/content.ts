@@ -3,7 +3,8 @@
 import { get } from '@vercel/blob';
 import { DEFAULTS, SiteData } from './data';
 
-export const FILE = 'site.json';
+// override only for local testing, so a test run can not touch real content
+export const FILE = process.env.CONTENT_FILE || 'site.json';
 
 // null when there is no file yet or the store is not set up
 export async function readContent(): Promise<SiteData | null> {

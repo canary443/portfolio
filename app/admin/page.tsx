@@ -30,6 +30,9 @@ export default function Admin() {
   const [loginErr, setLoginErr] = useState('');
   const [wait, setWait] = useState(0);
   const [flash, setFlash] = useState('');
+  // errors stay on screen until the next save, a toast is too easy to miss
+  const [err, setErr] = useState('');
+  const [saving, setSaving] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
 
   const flashT = useRef<ReturnType<typeof setTimeout>>();
@@ -84,11 +87,17 @@ export default function Admin() {
 
   const locked = wait > 0;
 
-  // local write is the fast path, the server copy is what other browsers read
-  const persist = (nd: SiteData, msg = 'saved') => {
-    if (!saveData(nd)) { show('save failed: storage full, remove some images/video'); return false; }
-    setData(nd); show(msg);
-    saveRemote(nd).then(r => { if (!r.ok) show('saved here only, server: ' + r.err); });
+  // the server copy is the real one. localStorage is only a cache, so a full
+  // one must never block a save
+  const persist = async (nd: SiteData, msg = 'saved') => {
+    setErr('');
+    setSaving(true);
+    const r = await saveRemote(nd);
+    setSaving(false);
+    if (!r.ok) { setErr('not saved: ' + r.err); return false; }
+    setData(nd);
+    saveData(nd); // best effort, a full cache is fine
+    show(msg);
     return true;
   };
   const F = (k: string) => form[k] || '';
@@ -196,21 +205,21 @@ export default function Admin() {
   // save handlers: keep the form open if the write was rejected (quota)
   const upsert = <T extends { id: string }>(arr: T[], item: T) =>
     editId ? arr.map(x => x.id === editId ? item : x) : [...arr, item];
-  const saveService = () => {
+  const saveService = async () => {
     if (!F('title').trim()) return;
     const item: Service = { id: editId || 's' + Date.now(), title: F('title').trim(), titleRu: F('titleRu').trim(), desc: F('desc').trim(), descRu: F('descRu').trim(), glyph: F('glyph').trim() || '▢', icon };
-    if (persist({ ...data, services: upsert(data.services, item) })) clearForm();
+    if (await persist({ ...data, services: upsert(data.services, item) })) clearForm();
   };
-  const saveWork = () => {
+  const saveWork = async () => {
     if (!F('title').trim() || !F('price').trim()) return;
     const vid = video || F('videoUrl').trim() || null;
     const item: Work = { id: editId || 'w' + Date.now(), title: F('title').trim(), titleRu: F('titleRu').trim(), price: F('price').trim(), date: F('date').trim(), link: F('link').trim(), video: vid, desc: F('desc').trim(), descRu: F('descRu').trim(), imgs, img: imgs[0] || null, changelog: logs };
-    if (persist({ ...data, works: upsert(data.works, item) })) clearForm();
+    if (await persist({ ...data, works: upsert(data.works, item) })) clearForm();
   };
-  const saveProject = () => {
+  const saveProject = async () => {
     if (!F('name').trim() || !F('role').trim()) return;
     const item: TeamProject = { id: editId || 'p' + Date.now(), name: F('name').trim(), role: F('role').trim(), roleRu: F('roleRu').trim(), from: F('from').trim() || '?', to: F('to').trim() || 'now', link: F('link').trim(), img: icon, changelog: logs };
-    if (persist({ ...data, projects: upsert(data.projects, item) })) clearForm();
+    if (await persist({ ...data, projects: upsert(data.projects, item) })) clearForm();
   };
 
   // changelog entry editor, shared by works and team projects
@@ -221,10 +230,10 @@ export default function Admin() {
     setLogs(p => [...p, { id: 'l' + Date.now(), date: F('logDate').trim() || today, text: F('logText').trim(), textRu: F('logTextRu').trim() }]);
     setForm(f => ({ ...f, logDate: '', logText: '', logTextRu: '' }));
   };
-  const saveFaq = () => {
+  const saveFaq = async () => {
     if (!F('fq').trim() || !F('fa').trim()) return;
     const item: FaqItem = { id: editId || 'f' + Date.now(), q: F('fq').trim(), a: F('fa').trim(), qRu: F('fqRu').trim(), aRu: F('faRu').trim() };
-    if (persist({ ...data, faq: upsert(data.faq, item) })) clearForm();
+    if (await persist({ ...data, faq: upsert(data.faq, item) })) clearForm();
   };
 
   const counts: Partial<Record<Sec, number>> = { services: data.services.length, works: data.works.length, projects: data.projects.length, faq: data.faq.length };
@@ -521,6 +530,17 @@ export default function Admin() {
           </>}
         </div>
       </div>
+
+      {/* save error: stays until the next save */}
+      {!!err && (
+        <div style={{ position: 'fixed', left: 0, right: 0, top: 0, zIndex: 700, background: '#3a1414', borderBottom: '1px solid #ff6b6b', color: '#ffbcbc', padding: '11px 18px', fontSize: 13.5, display: 'flex', alignItems: 'center', gap: 14 }}>
+          <span>{err}</span>
+          <span onClick={() => setErr('')} style={{ marginLeft: 'auto', cursor: 'pointer', color: '#ff6b6b' }}>dismiss</span>
+        </div>
+      )}
+      {saving && (
+        <div style={{ position: 'fixed', left: 0, right: 0, top: 0, zIndex: 700, height: 2, background: '#f3f3f3', opacity: .5 }} />
+      )}
 
       {/* toast */}
       <div style={{ position: 'fixed', left: 0, bottom: 34, width: '100%', display: 'flex', justifyContent: 'center', pointerEvents: 'none', zIndex: 600 }}>
