@@ -9,6 +9,7 @@
     "test:cursor": "node scripts/check-cursor.mjs"
   },
   "dependencies": {
+    "@phosphor-icons/react": "^2.1.10",
     "lenis": "^1.3.25",
     "next": "^14.2.35",
     "react": "18.3.1",
