@@ -17,6 +17,7 @@ import PixelTrailCursor from '@/components/fx/PixelTrailCursor';
 import TargetCursorFx from '@/components/fx/TargetCursorFx';
 import HeadlineReveal from '@/components/fx/HeadlineReveal';
 import GradualBlur from '@/components/GradualBlur';
+import LogoLoop from '@/components/LogoLoop';
 
 // one slide of a card carousel: video or photo
 interface Media { kind: 'video' | 'img'; src: string }
@@ -30,11 +31,27 @@ interface Item {
 const EASE = 'cubic-bezier(.22,1,.36,1)';
 // sites, bots, automation, custom code
 const SERVICE_ICONS = { s1: Layers, s2: Bot, s3: Cog, s4: Binary } as const;
-const STACK: [string, string][] = [
-  ['python', 'Python'], ['rust', 'Rust'], ['cplusplus', 'C++'], ['typescript', 'TypeScript'],
-  ['javascript', 'JavaScript'], ['react', 'React'], ['vite', 'Vite'], ['nextdotjs', 'Next.js'],
-  ['git', 'Git'], ['claude', 'Agents / Claude'], ['postgresql', 'SQL'], ['redis', 'Redis']
+// [simpleicons slug, label, official link]
+const STACK: [string, string, string][] = [
+  ['python', 'Python', 'https://www.python.org'], ['rust', 'Rust', 'https://www.rust-lang.org'],
+  ['cplusplus', 'C++', 'https://isocpp.org'], ['typescript', 'TypeScript', 'https://www.typescriptlang.org'],
+  ['javascript', 'JavaScript', 'https://developer.mozilla.org/docs/Web/JavaScript'], ['react', 'React', 'https://react.dev'],
+  ['vite', 'Vite', 'https://vite.dev'], ['nextdotjs', 'Next.js', 'https://nextjs.org'],
+  ['git', 'Git', 'https://git-scm.com'], ['claude', 'Agents / Claude', 'https://www.anthropic.com/claude'],
+  ['postgresql', 'SQL', 'https://www.postgresql.org'], ['redis', 'Redis', 'https://redis.io']
 ];
+// logo-loop items: icon + label, each linking to the tech's site
+const STACK_LOGOS = STACK.map(([slug, label, href]) => ({
+  node: (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
+      <img src={`https://cdn.simpleicons.org/${slug}/9c9c9c`} loading="lazy" alt="" style={{ width: 18, height: 18, display: 'block', opacity: .75 }} />
+      <span style={{ fontSize: 14, color: 'var(--muted)', whiteSpace: 'nowrap' }}>{label}</span>
+    </span>
+  ),
+  title: label,
+  ariaLabel: label,
+  href
+}));
 
 // language dropdown chevron (path inherits the svg fill)
 const CHEV = (<path d="M10.0878 4.83761C10.3157 4.6098 10.6849 4.6098 10.9127 4.83761C11.1405 5.06542 11.1405 5.43469 10.9127 5.66248L7.41272 9.16248C7.18493 9.39027 6.81566 9.39024 6.58785 9.16248L3.08785 5.66248C2.86004 5.43467 2.86004 5.06542 3.08785 4.83761C3.31565 4.6098 3.68491 4.6098 3.91272 4.83761L7.00028 7.92518L10.0878 4.83761Z" />);
@@ -519,17 +536,10 @@ export default function Site({ initial }: { initial: SiteData }) {
           </div>
         </div>
 
-        {/* stack marquee */}
+        {/* stack loop: smooth velocity, links, hover scale + pause, edge fade */}
         <div style={{ maxWidth: 1200, margin: '0 auto', padding: '64px 28px 0' }}>
-          <div style={{ borderTop: '1px solid var(--line)', borderBottom: '1px solid var(--line)', padding: '20px 0', overflow: 'hidden', whiteSpace: 'nowrap' }}>
-            <div className="marq" style={{ display: 'inline-flex', whiteSpace: 'nowrap', alignItems: 'center' }}>
-              {[...STACK, ...STACK].map(([slug, label], i) => (
-                <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 10, marginRight: 48 }}>
-                  <img src={`https://cdn.simpleicons.org/${slug}/9c9c9c`} loading="lazy" alt="" style={{ width: 18, height: 18, display: 'block', opacity: .75 }} />
-                  <span style={{ fontSize: 14, color: 'var(--muted)' }}>{label}</span>
-                </span>
-              ))}
-            </div>
+          <div style={{ borderTop: '1px solid var(--line)', borderBottom: '1px solid var(--line)', padding: '18px 0', overflow: 'hidden' }}>
+            <LogoLoop logos={STACK_LOGOS} speed={38} direction="left" gap={44} logoHeight={20} hoverSpeed={0} scaleOnHover fadeOut fadeOutColor="#101010" ariaLabel="Tech stack" />
           </div>
         </div>
 
