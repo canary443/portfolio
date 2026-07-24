@@ -30,19 +30,7 @@ const STACK: [string, string][] = [
   ['git', 'Git'], ['claude', 'Agents / Claude'], ['postgresql', 'SQL'], ['redis', 'Redis']
 ];
 
-// header switch icons (paths inherit the svg fill)
-const SUN = (<>
-  <path d="M7.00011 11.0833C7.14294 11.0834 7.28074 11.136 7.38748 11.2309C7.49421 11.3258 7.56272 11.4565 7.57945 11.5983L7.58344 11.6667V12.25C7.58328 12.3987 7.526 12.5418 7.42394 12.6499C7.32191 12.7579 7.18259 12.8229 7.03429 12.8316C6.88592 12.8403 6.73984 12.792 6.62584 12.6966C6.51185 12.6012 6.43835 12.466 6.42076 12.3184L6.41677 12.25V11.6667C6.41677 11.512 6.47828 11.3636 6.58767 11.2542C6.69706 11.1449 6.84543 11.0833 7.00011 11.0833Z" />
-  <path d="M3.67499 9.74178C3.82966 9.74179 3.97805 9.80333 4.08743 9.91268C4.18782 10.0131 4.24828 10.1469 4.25719 10.2887C4.26604 10.4303 4.22287 10.5707 4.13585 10.6829L4.08743 10.7375L3.67898 11.146C3.57409 11.2505 3.43331 11.3112 3.28535 11.3158C3.13721 11.3203 2.99262 11.2679 2.88146 11.1699C2.77035 11.0719 2.70068 10.9352 2.68663 10.7877C2.67264 10.6402 2.71512 10.493 2.80569 10.3758L2.85411 10.3211L3.26256 9.91268C3.37195 9.80332 3.52031 9.74178 3.67499 9.74178Z" />
-  <path d="M10.2164 9.75147C10.3562 9.72508 10.5009 9.75049 10.6232 9.82324L10.6824 9.86426L10.7377 9.91268L11.1455 10.3211C11.2501 10.4261 11.3113 10.5667 11.3159 10.7148C11.3204 10.8629 11.268 11.0075 11.17 11.1187C11.072 11.2298 10.9353 11.2994 10.7878 11.3135C10.6404 11.3275 10.4931 11.2849 10.3759 11.1944L10.3207 11.146L9.91279 10.7375C9.81212 10.6371 9.75138 10.503 9.74246 10.361C9.73358 10.2191 9.77711 10.0791 9.86437 9.9668C9.95164 9.85451 10.0767 9.77786 10.2164 9.75147Z" />
-  <path d="M7.00011 4.08333C7.57147 4.08333 8.1303 4.25105 8.60712 4.56584C9.08401 4.88072 9.45821 5.32887 9.68264 5.85441C9.90708 6.37997 9.97182 6.96014 9.86949 7.52238C9.76714 8.08457 9.5019 8.60442 9.10672 9.01717C8.71152 9.42989 8.20388 9.71766 7.64667 9.84432C7.08947 9.97097 6.50721 9.93115 5.97244 9.72982C5.43762 9.52843 4.97361 9.17403 4.63829 8.71126C4.30301 8.24852 4.11109 7.69737 4.08629 7.12647L4.08344 7L4.08629 6.87354C4.11891 6.12264 4.44008 5.41321 4.98294 4.89339C5.5258 4.37357 6.2485 4.08338 7.00011 4.08333Z" />
-  <path d="M2.33344 6.41667C2.48207 6.41687 2.62527 6.47357 2.73334 6.5756C2.84145 6.67767 2.90635 6.81741 2.91507 6.96582C2.92377 7.11419 2.87542 7.26027 2.78006 7.37427C2.68468 7.48822 2.54935 7.56174 2.4018 7.57935L2.33344 7.58333H1.75011C1.60149 7.58317 1.4583 7.52639 1.35021 7.4244C1.24209 7.32233 1.1772 7.1826 1.16848 7.03418C1.15977 6.88576 1.20807 6.73975 1.30349 6.62573C1.39892 6.51173 1.53412 6.43821 1.68175 6.42066L1.75011 6.41667H2.33344Z" />
-  <path d="M12.2501 6.41667C12.3987 6.41687 12.5419 6.47357 12.65 6.5756C12.7581 6.67767 12.823 6.81741 12.8317 6.96582C12.8404 7.11419 12.7921 7.26027 12.6967 7.37427C12.6013 7.48822 12.466 7.56174 12.3185 7.57935L12.2501 7.58333H11.6668C11.5182 7.58317 11.375 7.52639 11.2669 7.4244C11.1588 7.32233 11.0939 7.1826 11.0852 7.03418C11.0764 6.88576 11.1247 6.73975 11.2202 6.62573C11.3156 6.51173 11.4508 6.43821 11.5984 6.42066L11.6668 6.41667H12.2501Z" />
-  <path d="M3.15831 2.69393C3.29767 2.66746 3.4418 2.69295 3.56391 2.76514L3.62429 2.80558L3.67898 2.85401L4.08743 3.26245C4.19205 3.36743 4.25266 3.50852 4.25719 3.65666C4.26168 3.80468 4.20981 3.94887 4.11192 4.05998C4.01394 4.1711 3.87715 4.24071 3.72968 4.2548C3.58214 4.26886 3.43449 4.2264 3.31725 4.13574L3.26256 4.08732L2.85411 3.67887C2.75399 3.57843 2.69376 3.44501 2.68492 3.30347C2.67614 3.16179 2.71922 3.02139 2.80626 2.90926C2.89335 2.79712 3.01883 2.72049 3.15831 2.69393Z" />
-  <path d="M10.7331 2.68368C10.8877 2.68368 11.0362 2.74477 11.1455 2.85401C11.2459 2.95442 11.3064 3.08826 11.3153 3.22998C11.3242 3.37175 11.281 3.51195 11.194 3.62419L11.1455 3.67887L10.7371 4.08732C10.6321 4.19187 10.4915 4.25254 10.3435 4.25708C10.1953 4.2616 10.0507 4.20984 9.93956 4.11182C9.82846 4.01381 9.75879 3.87707 9.74474 3.72957C9.73068 3.58204 9.77371 3.43439 9.86437 3.31714L9.91279 3.26245L10.3207 2.85401C10.43 2.7447 10.5785 2.68372 10.7331 2.68368Z" />
-  <path d="M7.00011 1.16667C7.14294 1.16672 7.28074 1.2193 7.38748 1.31421C7.49421 1.40913 7.56272 1.53979 7.57945 1.68164L7.58344 1.75V2.33333C7.58328 2.48201 7.526 2.62512 7.42394 2.73324C7.32191 2.84122 7.18259 2.90622 7.03429 2.91496C6.88592 2.92367 6.73984 2.87531 6.62584 2.77995C6.51185 2.68455 6.43835 2.54929 6.42076 2.40169L6.41677 2.33333V1.75C6.41677 1.59529 6.47828 1.44696 6.58767 1.33757C6.69706 1.22821 6.84543 1.16667 7.00011 1.16667Z" />
-</>);
-const MOON = (<path d="M7.03476 1.16325L7.07407 1.16667H7.22959C7.73751 1.16685 7.99301 1.76366 7.67164 2.1311L7.62664 2.17782C6.97706 2.78122 6.55931 3.59304 6.4463 4.47241C6.3333 5.35186 6.53197 6.24338 7.00799 6.99146C7.484 7.73948 8.20744 8.29699 9.05193 8.56714C9.89641 8.83725 10.809 8.8026 11.6308 8.46973C12.1102 8.27517 12.5868 8.75596 12.3879 9.23421C11.9826 10.2093 11.3198 11.0561 10.471 11.6843C9.62217 12.3124 8.61888 12.6983 7.56796 12.8009C6.51707 12.9035 5.45798 12.7191 4.50375 12.2671C3.54945 11.8149 2.73558 11.1117 2.14934 10.2334C1.56319 9.35513 1.22613 8.33435 1.17465 7.2797C1.12319 6.22495 1.35916 5.17578 1.85711 4.24455C2.35506 3.31336 3.09673 2.53499 4.00245 1.99211C4.90799 1.44936 5.94371 1.16242 6.99944 1.16211L7.03476 1.16325Z" />);
+// language dropdown chevron (path inherits the svg fill)
 const CHEV = (<path d="M10.0878 4.83761C10.3157 4.6098 10.6849 4.6098 10.9127 4.83761C11.1405 5.06542 11.1405 5.43469 10.9127 5.66248L7.41272 9.16248C7.18493 9.39027 6.81566 9.39024 6.58785 9.16248L3.08785 5.66248C2.86004 5.43467 2.86004 5.06542 3.08785 4.83761C3.31565 4.6098 3.68491 4.6098 3.91272 4.83761L7.00028 7.92518L10.0878 4.83761Z" />);
 
 export default function Site({ initial }: { initial: SiteData }) {
@@ -64,7 +52,6 @@ export default function Site({ initial }: { initial: SiteData }) {
   const [safari, setSafari] = useState(false);
   const [customCursor, setCustomCursor] = useState(false);
   const [motionOk, setMotionOk] = useState(true);
-  const [theme, setThemeState] = useState<'dark' | 'light'>('dark');
   const [langOpen, setLangOpen] = useState(false);
 
   const cursorRef = useRef<HTMLDivElement>(null);
@@ -94,12 +81,6 @@ export default function Site({ initial }: { initial: SiteData }) {
     setSafari(isSafari);
     setCustomCursor(!isSafari && fine.current && !reduced.current);
     setMotionOk(!reduced.current);
-  }, []);
-
-  // theme: read what the no-flash script set on <html>, then keep in sync
-  useEffect(() => {
-    const t = document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
-    setThemeState(t);
   }, []);
 
   // close the language menu on an outside click
@@ -265,11 +246,6 @@ export default function Site({ initial }: { initial: SiteData }) {
   }, [closeModal]);
 
   const setLang = (l: Lang) => { localStorage.setItem('zx_lang', l); setLangState(l); setLangOpen(false); };
-  const setTheme = (th: 'dark' | 'light') => {
-    document.documentElement.dataset.theme = th;
-    localStorage.setItem('zx_theme', th);
-    setThemeState(th);
-  };
   const t = T[lang];
   const ru = lang === 'ru';
 
@@ -292,6 +268,16 @@ export default function Site({ initial }: { initial: SiteData }) {
     }, 5000);
     return () => clearInterval(iv);
   }, [motionOk, advanceCard]);
+
+  // in card carousels only the visible slide's video plays, the rest are paused
+  useEffect(() => {
+    document.querySelectorAll('video[data-cv]').forEach(el => {
+      const v = el as HTMLVideoElement;
+      const cur = cardPic[v.dataset.cv || ''] || 0;
+      if (Number(v.dataset.slide) === cur) { v.muted = true; v.play().catch(() => {}); }
+      else { v.pause(); }
+    });
+  }, [cardPic, data]);
 
   const showToast = useCallback((msg: string) => {
     clearTimeout(toastT.current);
@@ -401,27 +387,21 @@ export default function Site({ initial }: { initial: SiteData }) {
             <a href="#projects" className="navlnk">{t.navP}</a>
             <a href="#contact" className="navlnk">{t.navC}</a>
           </div>
-          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}>
-            {/* theme toggle: sun on the left, moon on the right, knob slides */}
-            <div className="ctrl-pill theme-switch" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} role="button" aria-label="Toggle theme" title="Theme">
-              <svg viewBox="0 0 14 14" fill={theme === 'light' ? 'var(--text)' : 'var(--muted)'} style={{ transition: 'fill .2s ease' }} aria-hidden>{SUN}</svg>
-              <svg viewBox="0 0 14 14" fill={theme === 'dark' ? 'var(--text)' : 'var(--muted)'} style={{ transition: 'fill .2s ease' }} aria-hidden>{MOON}</svg>
-              <span className="theme-knob" style={{ transform: `translateX(${theme === 'dark' ? 23 : 0}px)` }} />
+          {/* language picker, 1:1 from binware.su */}
+          <div className="header_lang_item" ref={langRef} style={{ marginLeft: 'auto' }} onClick={() => setLangOpen(o => !o)}>
+            <div className="header_lang_main">
+              <img src={ru ? '/images/flags/russia.svg' : '/images/flags/usa.svg'} alt="" />
+              <span>{ru ? 'Russian' : 'English'}</span>
             </div>
-            {/* language picker with flags */}
-            <div ref={langRef} style={{ position: 'relative' }}>
-              <div className={'ctrl-pill lang-pill' + (langOpen ? ' open' : '')} onClick={() => setLangOpen(o => !o)} role="button" aria-haspopup="listbox" aria-expanded={langOpen}>
-                <img src={ru ? '/images/flags/russia.svg' : '/images/flags/usa.svg'} alt="" />
-                <span className="lang-code">{ru ? 'RU' : 'EN'}</span>
-                <svg className="lang-chev" width="12" height="12" viewBox="0 0 14 14" fill="currentColor" aria-hidden>{CHEV}</svg>
+            <div className={'header_lang_button' + (langOpen ? ' active' : '')}>
+              <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden>{CHEV}</svg>
+            </div>
+            <div className={'lang_dropdown' + (langOpen ? ' active' : '')}>
+              <div className={'lang_option' + (ru ? ' active' : '')} onClick={e => { e.stopPropagation(); setLang('ru'); }}>
+                <img src="/images/flags/russia.svg" alt="" /><span>Russian</span>
               </div>
-              <div className="lang-menu" data-closed={!langOpen} role="listbox">
-                <div className={'lang-opt' + (!ru ? ' active' : '')} onClick={() => setLang('en')} role="option" aria-selected={!ru}>
-                  <img src="/images/flags/usa.svg" alt="" /><span>English</span>
-                </div>
-                <div className={'lang-opt' + (ru ? ' active' : '')} onClick={() => setLang('ru')} role="option" aria-selected={ru}>
-                  <img src="/images/flags/russia.svg" alt="" /><span>Russian</span>
-                </div>
+              <div className={'lang_option' + (!ru ? ' active' : '')} onClick={e => { e.stopPropagation(); setLang('en'); }}>
+                <img src="/images/flags/usa.svg" alt="" /><span>English</span>
               </div>
             </div>
           </div>
@@ -441,7 +421,7 @@ export default function Site({ initial }: { initial: SiteData }) {
         {config.showMap && (
           <div className="in3" style={{ overflow: 'hidden', marginTop: 8 }}>
             {/* avif is tiny but ios lockdown mode can not decode it. fall back to png on error */}
-            <img ref={handsRef} src="/assets/hero-hands.avif" alt="" fetchPriority="high" onError={e => { const im = e.currentTarget; if (!im.dataset.fb) { im.dataset.fb = '1'; im.src = '/assets/hero-hands.png'; } }} style={{ width: '114%', marginLeft: '-7%', display: 'block', transform: 'scale(1.06)', filter: 'invert(var(--hero-invert))', willChange: reduced.current ? 'auto' : 'transform' }} />
+            <img ref={handsRef} src="/assets/hero-hands.avif" alt="" fetchPriority="high" onError={e => { const im = e.currentTarget; if (!im.dataset.fb) { im.dataset.fb = '1'; im.src = '/assets/hero-hands.png'; } }} style={{ width: '114%', marginLeft: '-7%', display: 'block', transform: 'scale(1.06)', willChange: reduced.current ? 'auto' : 'transform' }} />
           </div>
         )}
       </div>
@@ -469,7 +449,7 @@ export default function Site({ initial }: { initial: SiteData }) {
                 {s.icon
                   ? <img src={s.icon} loading="lazy" alt="" style={{ width: 26, height: 26, objectFit: 'contain', display: 'block' }} />
                   : Icon
-                    ? <AnimateIcon animate={motionOk} loop loopDelay={1000} style={{ display: 'inline-flex', color: 'var(--icon)' }}><Icon size={26} aria-hidden /></AnimateIcon>
+                    ? <AnimateIcon animateOnView={motionOk} animateOnViewOnce style={{ display: 'inline-flex', color: 'var(--icon)' }}><Icon size={26} aria-hidden /></AnimateIcon>
                     : <div style={{ fontSize: 22, lineHeight: 1.2, color: 'var(--icon)' }}>{s.glyph}</div>}
                 <div style={{ marginTop: 20, fontSize: 14, letterSpacing: '.12em', textTransform: 'uppercase' }}>{s.title}</div>
                 <div style={{ marginTop: 10, fontSize: 14, lineHeight: 1.6, color: 'var(--muted)', maxWidth: '36ch' }}>{s.desc}</div>
@@ -515,16 +495,21 @@ export default function Site({ initial }: { initial: SiteData }) {
                   style={{ opacity: on ? 1 : 0, transform: on ? undefined : `translate3d(${i % 2 ? 36 : -36}px,0,0)` }}>
                   {config.spotlight && <span style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 2, background: 'radial-gradient(280px circle at var(--mx,-300px) var(--my,-300px),var(--spot),transparent 65%)' }} />}
                   {cur ? (
-                    <span style={{ position: 'relative', display: 'block', borderBottom: '1px solid var(--line)', overflow: 'hidden' }}>
-                      {cur.kind === 'video' ? (
-                        <video key={ci} ref={vidStart} className="imgfade" src={cur.src} loop={!hasCar} onEnded={hasCar ? () => advanceCard(w.id) : undefined} muted playsInline preload="none" style={{ width: '100%', aspectRatio: '16/10', objectFit: 'cover', display: 'block', background: '#000' }} />
-                      ) : (
-                        <img key={ci} className="imgfade" src={cur.src} loading="lazy" alt="" style={{ width: '100%', aspectRatio: '16/10', objectFit: 'cover', display: 'block' }} />
-                      )}
+                    <span style={{ position: 'relative', display: 'block', aspectRatio: '16/10', borderBottom: '1px solid var(--line)', overflow: 'hidden' }}>
+                      {/* all slides stacked, only the current is opaque, so changes crossfade smoothly */}
+                      {w.media.map((m, mi) => (
+                        <span key={mi} style={{ position: 'absolute', inset: 0, opacity: mi === ci ? 1 : 0, transition: motionOk ? 'opacity .7s var(--ease)' : 'none', pointerEvents: mi === ci ? 'auto' : 'none' }}>
+                          {m.kind === 'video' ? (
+                            <video data-cv={w.id} data-slide={mi} src={m.src} loop={!hasCar} onEnded={hasCar ? () => advanceCard(w.id) : undefined} muted playsInline preload="none" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', background: '#000' }} />
+                          ) : (
+                            <img src={m.src} loading="lazy" alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                          )}
+                        </span>
+                      ))}
                       {hasCar && <>
-                        <span className="carr" style={{ left: 8 }} onClick={e => { e.stopPropagation(); e.preventDefault(); setCardPic(c => ({ ...c, [w.id]: (ci - 1 + w.media.length) % w.media.length })); }}>‹</span>
-                        <span className="carr" style={{ right: 8 }} onClick={e => { e.stopPropagation(); e.preventDefault(); setCardPic(c => ({ ...c, [w.id]: (ci + 1) % w.media.length })); }}>›</span>
-                        <span style={{ position: 'absolute', left: 0, right: 0, bottom: 8, display: 'flex', justifyContent: 'center', gap: 5 }}>
+                        <span className="carr" style={{ left: 8, zIndex: 3 }} onClick={e => { e.stopPropagation(); e.preventDefault(); setCardPic(c => ({ ...c, [w.id]: (ci - 1 + w.media.length) % w.media.length })); }}>‹</span>
+                        <span className="carr" style={{ right: 8, zIndex: 3 }} onClick={e => { e.stopPropagation(); e.preventDefault(); setCardPic(c => ({ ...c, [w.id]: (ci + 1) % w.media.length })); }}>›</span>
+                        <span style={{ position: 'absolute', left: 0, right: 0, bottom: 8, display: 'flex', justifyContent: 'center', gap: 5, zIndex: 3 }}>
                           {w.media.map((_, di) => <span key={di} style={{ width: 6, height: 6, borderRadius: 99, background: di === ci ? '#f3f3f3' : 'rgba(255,255,255,.35)', transition: 'background .25s ease' }} />)}
                         </span>
                       </>}

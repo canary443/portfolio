@@ -13,8 +13,7 @@
 /* carousel image crossfade on src swap (element is re-keyed per index) */
 .imgfade { animation: zximg .35s ease both; }
 
-/* dark is the default, light is opt-in via [data-theme="light"] on <html> */
-:root, :root[data-theme="dark"] {
+:root {
   --ease: cubic-bezier(.22,1,.36,1);
   --bg: #101010;
   --hero-bg: #000000;
@@ -35,36 +34,7 @@
   --nav-bg: rgba(22,22,22,.6);
   --nav-bg-top: rgba(10,10,10,.5);
   --nav-border: rgba(255,255,255,.12);
-  --ctrl-bg: rgba(255,255,255,.05);
-  --ctrl-knob: rgba(255,255,255,.16);
   --spot: rgba(255,255,255,.06);
-  --hero-invert: 0;
-}
-
-:root[data-theme="light"] {
-  --bg: #ffffff;
-  --hero-bg: #ffffff;
-  --card: #f7f7f8;
-  --card-2: #f0f0f2;
-  --hover: #f3f3f5;
-  --line: #e7e7ea;
-  --line-2: #dcdce1;
-  --line-3: #eeeef1;
-  --text: #101010;
-  --text-strong: #000000;
-  --muted: #6a6a70;
-  --faint: #adadb4;
-  --icon: #8a8072;
-  --inv-bg: #141414;
-  --inv-bg-hover: #2c2c2c;
-  --inv-text: #f5f5f5;
-  --nav-bg: rgba(255,255,255,.72);
-  --nav-bg-top: rgba(255,255,255,.5);
-  --nav-border: rgba(0,0,0,.1);
-  --ctrl-bg: rgba(0,0,0,.04);
-  --ctrl-knob: rgba(0,0,0,.08);
-  --spot: rgba(0,0,0,.05);
-  --hero-invert: 1;
 }
 
 * { box-sizing: border-box; }
@@ -88,7 +58,6 @@ body {
   font-family: 'Satoshi', 'Onest', ui-sans-serif, system-ui, sans-serif;
   font-weight: 400;
   overflow-x: hidden;
-  transition: background-color .45s ease, color .45s ease;
 }
 a { color: var(--text); }
 a:hover { color: var(--text-strong); }
@@ -130,30 +99,27 @@ a:hover { color: var(--text-strong); }
 .ulink { color: var(--text); text-decoration: underline; text-underline-offset: 3px; }
 .ulink:hover { color: var(--text-strong); }
 
-/* header controls: theme switch + language picker */
-.ctrl-pill { display: inline-flex; align-items: center; border: 1px solid var(--nav-border); background: var(--ctrl-bg); border-radius: 9999px; cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent; transition: border-color .2s ease, background .2s ease; }
-.ctrl-pill:hover { border-color: var(--faint); }
-.theme-switch { position: relative; width: 50px; height: 27px; padding: 0 3px; justify-content: space-between; }
-.theme-switch svg { position: relative; z-index: 1; width: 14px; height: 14px; }
-.theme-knob { position: absolute; top: 3px; left: 3px; width: 21px; height: 21px; border-radius: 50%; background: var(--ctrl-knob); transition: transform .38s cubic-bezier(.4,0,.2,1); pointer-events: none; }
-.lang-pill { gap: 7px; height: 27px; padding: 0 7px 0 9px; }
-.lang-pill img { width: 18px; height: 13px; border-radius: 2px; display: block; box-shadow: 0 0 0 1px var(--nav-border); }
-.lang-pill .lang-code { font-size: 12px; font-weight: 500; letter-spacing: .04em; color: var(--text); }
-.lang-pill .lang-chev { transition: transform .25s ease; color: var(--muted); }
-.lang-pill.open .lang-chev { transform: rotate(180deg); }
-.lang-menu { position: absolute; top: calc(100% + 6px); right: 0; min-width: 138px; background: var(--card); border: 1px solid var(--line); border-radius: 13px; padding: 5px; box-shadow: 0 12px 40px rgba(0,0,0,.35); transform-origin: top right; transition: opacity .18s ease, transform .18s var(--ease); z-index: 30; }
-.lang-menu[data-closed="true"] { opacity: 0; transform: scale(.96); pointer-events: none; }
-.lang-opt { display: flex; align-items: center; gap: 9px; padding: 7px 9px; border-radius: 9px; font-size: 13px; color: var(--muted); cursor: pointer; transition: background .15s ease, color .15s ease; }
-.lang-opt:hover { background: var(--hover); color: var(--text); }
-.lang-opt.active { background: var(--hover); color: var(--text); }
-.lang-opt img { width: 20px; height: 15px; border-radius: 2px; display: block; box-shadow: 0 0 0 1px var(--nav-border); }
+/* language picker, 1:1 from binware.su */
+.header_lang_item { position: relative; width: 107px; height: 25px; display: flex; align-items: center; justify-content: space-between; padding: 0 2px; border-radius: 128px; background: #171717; cursor: pointer; user-select: none; }
+.header_lang_main { width: 79px; height: 23px; display: flex; align-items: center; justify-content: space-between; padding: 0 6px; border-radius: 128px; background: #1f1f1f; }
+.header_lang_main img { width: 17px; height: 17px; display: block; }
+.header_lang_main span { font-size: 12px; font-weight: 500; color: #f3f3f3; }
+.header_lang_button { width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; }
+.header_lang_button svg { fill: rgba(255,255,255,.6); transition: transform .25s ease; }
+.header_lang_button.active svg { transform: rotate(180deg); }
+.lang_dropdown { position: absolute; top: calc(100% + 2px); right: 0; width: 107px; padding: 4px; border-radius: 14px; background: #171717; box-shadow: 0 4px 12px rgba(0,0,0,.15); opacity: 0; transform: translateY(-5px); pointer-events: none; transition: .25s ease; z-index: 30; }
+.lang_dropdown.active { opacity: 1; transform: translateY(0); pointer-events: auto; }
+.lang_option { height: 23px; display: flex; align-items: center; gap: 6px; padding: 0 8px; border-radius: 12px; font-size: 11px; line-height: 1; color: rgba(255,255,255,.6); }
+.lang_option:not(:last-child) { margin-bottom: 4px; }
+.lang_option img { width: 17px; height: 17px; display: block; }
+.lang_option:hover, .lang_option.active { background: #1f1f1f; color: #ffffff; }
 
 /* hide the center nav links on small screens (controls stay visible) */
 @media (max-width: 760px) {
   .nav-center { display: none !important; }
 }
 
-/* admin (always dark, forced via data-theme) */
+/* admin */
 .ainput { background: #0c0c0c; border: 1px solid #212121; border-radius: 8px; color: #f3f3f3; font-family: 'Satoshi', 'Onest', sans-serif; font-size: 14px; padding: 10px 12px; transition: border-color .2s ease; }
 .ainput:focus { border-color: #474747; outline: none; }
 .abtn { display: inline-block; background: #ffffff; color: #101010; border-radius: 9999px; padding: 9px 22px; font-size: 14px; cursor: pointer; user-select: none; border: none; transition: background .15s ease; }
@@ -179,5 +145,4 @@ a:hover { color: var(--text-strong); }
   .card { transition: border-color .2s ease, opacity .3s ease; }
   .svc { transition: background .25s ease, opacity .3s ease; }
   .partner, .pill, .ghost { transition-property: opacity, background, border-color, color; }
-  .theme-knob { transition: none; }
 }
