@@ -286,7 +286,7 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
     if (!modalOpen.current) return;
     setClosing(true);
     clearTimeout(closeT.current);
-    closeT.current = setTimeout(() => { setModal(null); setClosing(false); }, 240);
+    closeT.current = setTimeout(() => { setModal(null); setClosing(false); }, 250);
   }, []);
 
   const openModal = useCallback((w: Item, ci: number) => {
@@ -475,11 +475,13 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
                 ? { src: data.heroArtCustom!, fb: data.heroArtCustom! }
                 : kind === 'hands'
                   ? { src: '/assets/hero-hands.avif', fb: '/assets/hero-hands.png' }
-                  : { src: '/assets/kitokat-ascii-fine.avif', fb: '/assets/kitokat-ascii-fine.png' };
+                  : kind === 'braille'
+                    ? { src: '/assets/kitokat-braille.avif', fb: '/assets/kitokat-braille.png' }
+                    : { src: '/assets/kitokat-ascii-fine.avif', fb: '/assets/kitokat-ascii-fine.png' };
               // admin scale on top of each art's base width; wider than the
               // viewport bleeds evenly to both sides (overflow is hidden)
               const sc = Math.max(40, Math.min(160, data.heroArtScale || 100)) / 100;
-              const w = (kind === 'hands' ? 114 : kind === 'custom' ? 86 : 80) * sc;
+              const w = (kind === 'hands' ? 114 : kind === 'custom' ? 86 : kind === 'braille' ? 32 : 80) * sc;
               const style: React.CSSProperties = kind === 'custom'
                 ? { maxWidth: Math.min(w, 100) + '%', maxHeight: Math.round(58 * sc) + 'vh', margin: '0 auto' }
                 : w > 100
@@ -707,9 +709,9 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
         const rm = reduced.current;
         const ovBlur = safari ? 'blur(5px)' : 'blur(10px)';
         return (
-        <div onClick={closeModal} style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(0,0,0,.66)', backdropFilter: ovBlur, WebkitBackdropFilter: ovBlur, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, opacity: closing ? 0 : undefined, transition: 'opacity .22s ease', animation: closing || rm ? 'none' : 'zxfade .3s ease both' }}>
+        <div onClick={closeModal} style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(0,0,0,.66)', backdropFilter: ovBlur, WebkitBackdropFilter: ovBlur, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, animation: closing ? 'zxfadeout .22s ease both' : rm ? 'none' : 'zxfade .3s ease both' }}>
           {/* exit mirrors the entry path: drops back down, shrinks and blurs away, faster than it came in */}
-          <div onClick={e => e.stopPropagation()} data-lenis-prevent style={{ width: 'min(660px,94vw)', maxHeight: '86vh', overflow: 'auto', background: 'var(--card)', border: '1px solid var(--line-2)', borderRadius: 14, opacity: closing ? 0 : undefined, transform: closing && !rm ? 'translateY(16px) scale(.95)' : undefined, filter: closing && !rm ? 'blur(5px)' : undefined, transition: `opacity .2s ease, transform .26s ${EASE}, filter .2s ease`, animation: closing || rm ? 'none' : `zxmodal .45s ${EASE} both` }}>
+          <div onClick={e => e.stopPropagation()} data-lenis-prevent style={{ width: 'min(660px,94vw)', maxHeight: '86vh', overflow: 'auto', background: 'var(--card)', border: '1px solid var(--line-2)', borderRadius: 14, animation: closing ? (rm ? 'zxfadeout .2s ease both' : `zxmodalout .24s ${EASE} both`) : rm ? 'none' : `zxmodal .45s ${EASE} both` }}>
             {modal.media.length > 0 && (
               <div style={{ position: 'relative', borderBottom: '1px solid var(--line)' }}>
                 <MediaCarousel media={modal.media} mode="modal" motionOk={motionOk} startIndex={Math.min(pic, modal.media.length - 1)} radius="13px 13px 0 0" />
