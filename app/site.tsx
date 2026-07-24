@@ -3,7 +3,10 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Lenis from 'lenis';
-import { ArrowsClockwise, Browser, Code, Robot } from '@phosphor-icons/react';
+import { Bot } from '@/components/animate-ui/icons/bot';
+import { Layers } from '@/components/animate-ui/icons/layers';
+import { Cog } from '@/components/animate-ui/icons/cog';
+import { Binary } from '@/components/animate-ui/icons/binary';
 import { loadRemote, fetchRub, SiteData, LogEntry } from '@/lib/data';
 import { T, Lang } from '@/lib/i18n';
 import { config } from '@/lib/config';
@@ -18,7 +21,8 @@ interface Item {
 }
 
 const EASE = 'cubic-bezier(.22,1,.36,1)';
-const SERVICE_ICONS = { s1: Browser, s2: Robot, s3: ArrowsClockwise, s4: Code } as const;
+// sites, bots, automation, custom code
+const SERVICE_ICONS = { s1: Layers, s2: Bot, s3: Cog, s4: Binary } as const;
 const STACK: [string, string][] = [
   ['python', 'Python'], ['rust', 'Rust'], ['cplusplus', 'C++'], ['typescript', 'TypeScript'],
   ['javascript', 'JavaScript'], ['react', 'React'], ['vite', 'Vite'], ['nextdotjs', 'Next.js'],
@@ -43,6 +47,7 @@ export default function Site({ initial }: { initial: SiteData }) {
   const [closing, setClosing] = useState(false);
   const [safari, setSafari] = useState(false);
   const [customCursor, setCustomCursor] = useState(false);
+  const [svcHover, setSvcHover] = useState<Record<string, boolean>>({});
 
   const cursorRef = useRef<HTMLDivElement>(null);
   const handsRef = useRef<HTMLImageElement>(null);
@@ -364,13 +369,16 @@ export default function Site({ initial }: { initial: SiteData }) {
               const on = revealAll || revealed['svc-' + s.id];
               const Icon = SERVICE_ICONS[s.id as keyof typeof SERVICE_ICONS];
               return (
-              <div key={s.id} data-reveal={'svc-' + s.id} className="svc" onMouseMove={config.spotlight ? spotMove : undefined} onMouseLeave={config.spotlight ? spotLeave : undefined}
+              <div key={s.id} data-reveal={'svc-' + s.id} className="svc"
+                onMouseEnter={() => setSvcHover(h => ({ ...h, [s.id]: true }))}
+                onMouseMove={config.spotlight ? spotMove : undefined}
+                onMouseLeave={e => { setSvcHover(h => ({ ...h, [s.id]: false })); if (config.spotlight) spotLeave(e); }}
                 style={{ opacity: on ? 1 : 0, transform: on ? undefined : 'translate3d(0,18px,0)', transitionDelay: on ? `0s, ${(i % 2) * 60}ms, ${(i % 2) * 60}ms` : '0s' }}>
                 {config.spotlight && <span style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: 'radial-gradient(280px circle at var(--mx,-300px) var(--my,-300px),rgba(255,255,255,.06),transparent 65%)' }} />}
                 {s.icon
                   ? <img src={s.icon} loading="lazy" alt="" style={{ width: 26, height: 26, objectFit: 'contain', display: 'block' }} />
                   : Icon
-                    ? <Icon size={26} weight="regular" color="#6f6759" aria-hidden />
+                    ? <Icon size={26} animate={!reduced.current && !!svcHover[s.id]} style={{ color: '#6f6759' }} aria-hidden />
                     : <div style={{ fontSize: 22, lineHeight: 1.2, color: '#6f6759' }}>{s.glyph}</div>}
                 <div style={{ marginTop: 20, fontSize: 14, letterSpacing: '.12em', textTransform: 'uppercase' }}>{s.title}</div>
                 <div style={{ marginTop: 10, fontSize: 14, lineHeight: 1.6, color: '#9c9c9c', maxWidth: '36ch' }}>{s.desc}</div>
