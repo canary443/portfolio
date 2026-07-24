@@ -6,16 +6,15 @@ import {
   loadData, saveData, resetData, loadRemote, saveRemote, DEFAULTS,
   SiteData, Service, Work, TeamProject, FaqItem, LogEntry, HeroBg, CursorStyle, HERO_PRESETS
 } from '@/lib/data';
-import { shrinkImage, dataUrlKb } from '@/lib/img';
+import { shrinkImage, dataUrlKb, uploadMedia } from '@/lib/img';
 
 // effect controls, rendered in the settings page
-type FxKey = 'fxGradualBlur' | 'fxHeadlineReveal' | 'fxShapeBlur' | 'fxCardTilt';
+type FxKey = 'fxGradualBlur' | 'fxHeadlineReveal' | 'fxCardTilt';
 const HERO_BG_OPTS: [HeroBg, string][] = [['image', 'Image (hands)'], ['pixel-blast', 'Pixel blast'], ['dither', 'Dither'], ['threads', 'Threads'], ['liquid-chrome', 'Liquid chrome']];
 const CURSOR_OPTS: [CursorStyle, string][] = [['dot', 'Dot'], ['pixel-trail', 'Pixel trail'], ['target', 'Target'], ['native', 'Native']];
 const FX_TOGGLES: [FxKey, string, boolean][] = [
   ['fxGradualBlur', 'Gradual blur seams', true],
   ['fxHeadlineReveal', 'Hero headline reveal', true],
-  ['fxShapeBlur', 'Shape blur behind about', false],
   ['fxCardTilt', 'Project card tilt', false]
 ];
 
@@ -35,7 +34,7 @@ const SECTION_KEYS: Partial<Record<Sec, (keyof SiteData)[]>> = {
   works: ['works'],
   projects: ['projects'],
   faq: ['faq'],
-  settings: ['telegram', 'github', 'email', 'heroBg', 'heroPreset', 'cursorStyle', 'fxGradualBlur', 'fxHeadlineReveal', 'fxShapeBlur', 'fxCardTilt']
+  settings: ['telegram', 'github', 'email', 'heroBg', 'heroPreset', 'cursorStyle', 'fxGradualBlur', 'fxHeadlineReveal', 'fxCardTilt']
 };
 
 export default function Admin() {
@@ -243,9 +242,12 @@ export default function Admin() {
     show('adding photos...');
     const done = await Promise.all(files.map(f => shrinkImage(f, 1400).catch(() => '')));
     const ok = done.filter(Boolean);
-    if (ok.length) setImgs(p => [...p, ...ok]);
+    const kb = dataUrlKb(ok.join(''));
+    // upload each to storage, fall back to the data url on failure
+    const stored = await Promise.all(ok.map(d => uploadMedia(d)));
+    if (stored.length) setImgs(p => [...p, ...stored]);
     if (ok.length < files.length) show('some images could not be read');
-    else show(ok.length + ' photo(s) added, ' + dataUrlKb(ok.join('')) + 'kb');
+    else show(ok.length + ' photo(s) added, ' + kb + 'kb');
   };
   // service icons stay png so a transparent logo keeps its background
   const readIcon = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -254,7 +256,8 @@ export default function Admin() {
     if (!f) return;
     try {
       const src = await shrinkImage(f, 128, 'image/png');
-      setIcon(src);
+      // upload to storage, keep the data url if that fails
+      setIcon(await uploadMedia(src));
       show('icon added, ' + dataUrlKb(src) + 'kb');
     } catch { show('image could not be read'); }
   };
@@ -266,7 +269,8 @@ export default function Admin() {
     show('adding photo...');
     try {
       const src = await shrinkImage(f, 1400);
-      setIcon(src);
+      // upload to storage, keep the data url if that fails
+      setIcon(await uploadMedia(src));
       show('photo added, ' + dataUrlKb(src) + 'kb');
     } catch { show('image could not be read'); }
   };
@@ -275,7 +279,8 @@ export default function Admin() {
     if (!f) return;
     if (f.size > 2500000) { show('video too big, max ~2.5mb (or use a url)'); return; }
     const r = new FileReader();
-    r.onload = () => { setVideo(r.result as string); setForm(fm => ({ ...fm, videoUrl: '' })); };
+    // upload to storage, keep the data url if that fails
+    r.onload = async () => { setVideo(await uploadMedia(r.result as string)); setForm(fm => ({ ...fm, videoUrl: '' })); };
     r.readAsDataURL(f);
     e.target.value = '';
   };

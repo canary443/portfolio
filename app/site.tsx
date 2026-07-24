@@ -13,7 +13,6 @@ import { T, Lang } from '@/lib/i18n';
 import { config } from '@/lib/config';
 import { webglSupported } from '@/lib/fx';
 import HeroFx from '@/components/fx/HeroFx';
-import ShapeBlurFx from '@/components/fx/ShapeBlurFx';
 import PixelTrailCursor from '@/components/fx/PixelTrailCursor';
 import TargetCursorFx from '@/components/fx/TargetCursorFx';
 import HeadlineReveal from '@/components/fx/HeadlineReveal';
@@ -96,7 +95,6 @@ export default function Site({ initial }: { initial: SiteData }) {
   const showImage = config.showMap && (heroBg === 'image' || (fxResolved && !fxCapable));
   const gradualOn = data.fxGradualBlur !== false;
   const headlineOn = data.fxHeadlineReveal !== false && motionOk;
-  const shapeOn = fxCapable && !!data.fxShapeBlur;
   const tiltOn = !!data.fxCardTilt && fineOk;
 
   // detect input and browser once
@@ -618,9 +616,7 @@ export default function Site({ initial }: { initial: SiteData }) {
 
         {/* about */}
         {config.showAbout && (
-          <div style={{ position: 'relative', isolation: 'isolate', overflow: 'hidden', maxWidth: 620, margin: '0 auto', padding: '120px 28px 0', textAlign: 'center' }}>
-            {shapeOn && <ShapeBlurFx opacity={0.4} />}
-            <div style={{ position: 'relative', zIndex: 1 }}>
+          <div style={{ maxWidth: 620, margin: '0 auto', padding: '120px 28px 0', textAlign: 'center' }}>
             <div style={{ fontSize: 23 }}>{t.aboutH}</div>
             <div style={{ marginTop: 16, fontSize: 16, lineHeight: 1.65, color: 'var(--muted)' }}>{renderAbout(aboutText)}</div>
             <div style={{ marginTop: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, flexWrap: 'wrap' }}>
@@ -632,7 +628,6 @@ export default function Site({ initial }: { initial: SiteData }) {
                 </span>
                 {t.based}
               </span>
-            </div>
             </div>
           </div>
         )}
@@ -769,8 +764,8 @@ export default function Site({ initial }: { initial: SiteData }) {
         <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 400, backgroundImage: `url(${noise})`, backgroundRepeat: 'repeat', transform: 'translateZ(0)', ...(safari ? { opacity: .16 } : { opacity: .5, mixBlendMode: 'overlay' as const }) }} />
       )}
 
-      {/* toast */}
-      <div style={{ position: 'fixed', left: 0, bottom: 34, width: '100%', display: 'flex', justifyContent: 'center', pointerEvents: 'none', zIndex: 600 }}>
+      {/* toast: sits above the page-bottom gradual blur (~1100) so it stays crisp */}
+      <div style={{ position: 'fixed', left: 0, bottom: 34, width: '100%', display: 'flex', justifyContent: 'center', pointerEvents: 'none', zIndex: 2000 }}>
         <span style={{ background: 'var(--inv-bg)', color: 'var(--inv-text)', borderRadius: 9999, padding: '9px 18px', fontSize: 13, opacity: toast ? 1 : 0, transform: toast ? 'translateY(0)' : 'translateY(14px)', transition: `opacity .35s ease, transform .4s ${EASE}` }}>{toast || ' '}</span>
       </div>
 
@@ -782,7 +777,7 @@ export default function Site({ initial }: { initial: SiteData }) {
       {targetOn && <TargetCursorFx />}
 
       {/* cinematic gradual blur at the bottom edge of the viewport */}
-      {gradualOn && <GradualBlur target="page" position="bottom" height="6rem" strength={2} divCount={6} curve="bezier" />}
+      {gradualOn && <GradualBlur target="page" position="bottom" height="2rem" strength={0.7} divCount={4} curve="bezier" />}
 
       {/* short load cover: fades out to hide the first paint and hero swap flicker */}
       <div aria-hidden style={{ position: 'fixed', inset: 0, zIndex: 99999, background: 'var(--bg)', opacity: intro ? 1 : 0, transition: 'opacity .38s ease', pointerEvents: 'none' }} />

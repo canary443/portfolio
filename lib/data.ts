@@ -50,7 +50,7 @@ export interface SiteData {
   // effects (flat fields so old saved data backfills from defaults)
   heroBg?: HeroBg; heroPreset?: string; cursorStyle?: CursorStyle;
   fxGradualBlur?: boolean; fxHeadlineReveal?: boolean;
-  fxShapeBlur?: boolean; fxCardTilt?: boolean;
+  fxCardTilt?: boolean;
 }
 
 export const DEFAULTS: SiteData = {
@@ -64,7 +64,6 @@ export const DEFAULTS: SiteData = {
   cursorStyle: 'dot',
   fxGradualBlur: true,
   fxHeadlineReveal: true,
-  fxShapeBlur: false,
   fxCardTilt: false,
   services: [
     { id: 's1', glyph: '▤', icon: null, title: 'Sites', titleRu: 'Сайты', desc: 'Landings, portfolios, shops. Fast and clean.', descRu: 'Лендинги, портфолио, магазины. Быстро и аккуратно.' },
