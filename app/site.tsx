@@ -343,7 +343,8 @@ export default function Site({ initial }: { initial: SiteData }) {
         </div>
         {config.showMap && (
           <div className="in3" style={{ overflow: 'hidden', marginTop: 8 }}>
-            <img ref={handsRef} src="/assets/hero-hands.avif" alt="" fetchPriority="high" style={{ width: '114%', marginLeft: '-7%', display: 'block', transform: 'scale(1.06)', willChange: reduced.current ? 'auto' : 'transform' }} />
+            {/* avif is tiny but ios lockdown mode can not decode it. fall back to png on error */}
+            <img ref={handsRef} src="/assets/hero-hands.avif" alt="" fetchPriority="high" onError={e => { const im = e.currentTarget; if (!im.dataset.fb) { im.dataset.fb = '1'; im.src = '/assets/hero-hands.png'; } }} style={{ width: '114%', marginLeft: '-7%', display: 'block', transform: 'scale(1.06)', willChange: reduced.current ? 'auto' : 'transform' }} />
           </div>
         )}
       </div>
