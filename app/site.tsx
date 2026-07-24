@@ -19,9 +19,7 @@ import HeadlineReveal from '@/components/fx/HeadlineReveal';
 import { Reveal } from '@/components/animate-ui/primitives/effects/reveal';
 import GradualBlur from '@/components/GradualBlur';
 import LogoLoop from '@/components/LogoLoop';
-
-// one slide of a card carousel: video or photo
-interface Media { kind: 'video' | 'img'; src: string }
+import MediaCarousel, { type Media } from '@/components/MediaCarousel';
 interface Item {
   id: string; media: Media[];
   title: string; link: string; sub: string; cat: string;
@@ -103,10 +101,6 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
   const closeT = useRef<ReturnType<typeof setTimeout>>(undefined);
   const fine = useRef(false);
   const reduced = useRef(false);
-  // mirrors for the auto-advance timer, so it reads fresh values without resetting
-  const cardPicRef = useRef(cardPic);
-  const itemsRef = useRef<Item[]>([]);
-  cardPicRef.current = cardPic;
 
   // which effects are on. webgl and the pixel trail need a fine pointer with
   // motion allowed, so touch, reduced-motion and no-webgl fall back to plain ui
@@ -325,36 +319,6 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
     return f ? { fontFamily: RU_FONT_STACK[f] } : undefined;
   };
 
-  // step one card carousel to its next slide
-  const advanceCard = useCallback((id: string) => {
-    const it = itemsRef.current.find(x => x.id === id);
-    if (!it || it.media.length < 2) return;
-    setCardPic(c => ({ ...c, [id]: ((c[id] || 0) + 1) % it.media.length }));
-  }, []);
-
-  // auto-advance photo slides every 5s. video slides wait for onEnded instead
-  useEffect(() => {
-    if (!motionOk) return;
-    const iv = setInterval(() => {
-      itemsRef.current.forEach(it => {
-        if (it.media.length < 2) return;
-        const ci = (cardPicRef.current[it.id] || 0) % it.media.length;
-        if (it.media[ci]?.kind === 'img') advanceCard(it.id);
-      });
-    }, 5000);
-    return () => clearInterval(iv);
-  }, [motionOk, advanceCard]);
-
-  // in card carousels only the visible slide's video plays, the rest are paused
-  useEffect(() => {
-    document.querySelectorAll('video[data-cv]').forEach(el => {
-      const v = el as HTMLVideoElement;
-      const cur = cardPic[v.dataset.cv || ''] || 0;
-      if (Number(v.dataset.slide) === cur) { v.muted = true; v.play().catch(() => {}); }
-      else { v.pause(); }
-    });
-  }, [cardPic, data]);
-
   const showToast = useCallback((msg: string) => {
     clearTimeout(toastT.current);
     setToast(msg);
@@ -386,14 +350,6 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
     if (lenisRef.current) lenisRef.current.scrollTo(0);
     else window.scrollTo({ top: 0, behavior: reduced.current ? 'auto' : 'smooth' });
   };
-  // stable ref so react does not detach/replay on every render; play once per element
-  const vidStart = useCallback((el: HTMLVideoElement | null) => {
-    if (!el || el.dataset.started) return;
-    el.dataset.started = '1';
-    el.muted = true;
-    el.play().catch(() => {});
-  }, []);
-
   const tgHref = 'https://t.me/' + data.telegram;
   const ghHref = 'https://github.com/' + data.github;
 
@@ -432,7 +388,6 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
       changelog: p.changelog || []
     }))
   ];
-  itemsRef.current = items;
 
   const aboutText = ru && data.aboutRu ? data.aboutRu : data.about;
   const email = data.email || 'contact@leet-cheats.xyz';
@@ -597,7 +552,6 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
             {items.map(w => {
               const on = revealAll || revealed[w.id] !== undefined;
               const ci = (cardPic[w.id] || 0) % Math.max(w.media.length, 1);
-              const hasCar = w.media.length > 1;
               const cur = w.media[ci];
               // the wrapper owns the reveal, so hover lift and tilt on the card never fight it
               return (
@@ -610,23 +564,8 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
                   {config.spotlight && <span style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 2, background: 'radial-gradient(280px circle at var(--mx,-300px) var(--my,-300px),var(--spot),transparent 65%)' }} />}
                   {cur ? (
                     <span style={{ position: 'relative', display: 'block', aspectRatio: '16/10', borderBottom: '1px solid var(--line)', overflow: 'hidden' }}>
-                      {/* all slides stacked, only the current is opaque, so changes crossfade smoothly */}
-                      {w.media.map((m, mi) => (
-                        <span key={mi} style={{ position: 'absolute', inset: 0, opacity: mi === ci ? 1 : 0, transition: motionOk ? 'opacity .7s var(--ease)' : 'none', pointerEvents: mi === ci ? 'auto' : 'none' }}>
-                          {m.kind === 'video' ? (
-                            <video data-cv={w.id} data-slide={mi} src={m.src} loop={!hasCar} onEnded={hasCar ? () => advanceCard(w.id) : undefined} muted playsInline preload="none" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', background: '#000' }} />
-                          ) : (
-                            <img src={m.src} loading="lazy" alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                          )}
-                        </span>
-                      ))}
-                      {hasCar && <>
-                        <span className="carr" style={{ left: 8, zIndex: 3 }} onClick={e => { e.stopPropagation(); e.preventDefault(); setCardPic(c => ({ ...c, [w.id]: (ci - 1 + w.media.length) % w.media.length })); }}>‹</span>
-                        <span className="carr" style={{ right: 8, zIndex: 3 }} onClick={e => { e.stopPropagation(); e.preventDefault(); setCardPic(c => ({ ...c, [w.id]: (ci + 1) % w.media.length })); }}>›</span>
-                        <span style={{ position: 'absolute', left: 0, right: 0, bottom: 8, display: 'flex', justifyContent: 'center', gap: 5, zIndex: 3 }}>
-                          {w.media.map((_, di) => <span key={di} style={{ width: 6, height: 6, borderRadius: 99, background: di === ci ? '#f3f3f3' : 'rgba(255,255,255,.35)', transform: di === ci ? 'scale(1.25)' : 'scale(1)', transition: 'background .25s ease, transform .25s var(--ease)' }} />)}
-                        </span>
-                      </>}
+                      {/* shadcn/embla carousel: crossfade slides, swipe on touch */}
+                      <MediaCarousel media={w.media} mode="card" motionOk={motionOk} onIndex={i => setCardPic(c => (c[w.id] === i ? c : { ...c, [w.id]: i }))} />
                     </span>
                   ) : (
                     <div style={{ width: '100%', aspectRatio: '16/10', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'repeating-linear-gradient(45deg,var(--bg) 0px,var(--bg) 9px,var(--card-2) 9px,var(--card-2) 18px)', borderBottom: '1px solid var(--line)' }}>
@@ -771,29 +710,11 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
         <div onClick={closeModal} style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(0,0,0,.66)', backdropFilter: ovBlur, WebkitBackdropFilter: ovBlur, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, opacity: closing ? 0 : undefined, transition: 'opacity .22s ease', animation: closing || rm ? 'none' : 'zxfade .3s ease both' }}>
           {/* exit mirrors the entry path: drops back down, shrinks and blurs away, faster than it came in */}
           <div onClick={e => e.stopPropagation()} data-lenis-prevent style={{ width: 'min(660px,94vw)', maxHeight: '86vh', overflow: 'auto', background: 'var(--card)', border: '1px solid var(--line-2)', borderRadius: 14, opacity: closing ? 0 : undefined, transform: closing && !rm ? 'translateY(16px) scale(.95)' : undefined, filter: closing && !rm ? 'blur(5px)' : undefined, transition: `opacity .2s ease, transform .26s ${EASE}, filter .2s ease`, animation: closing || rm ? 'none' : `zxmodal .45s ${EASE} both` }}>
-            {modal.media.length > 0 && (() => {
-              const mi = Math.min(pic, modal.media.length - 1);
-              const cur = modal.media[mi];
-              const round = '13px 13px 0 0';
-              return (
+            {modal.media.length > 0 && (
               <div style={{ position: 'relative', borderBottom: '1px solid var(--line)' }}>
-                {cur.kind === 'video' ? (
-                  <video key={mi} ref={vidStart} className="imgfade" src={cur.src} loop muted playsInline preload="none" style={{ width: '100%', aspectRatio: '16/9', objectFit: 'cover', display: 'block', borderRadius: round, background: '#000' }} />
-                ) : (
-                  <img key={mi} className="imgfade" src={cur.src} alt="" style={{ width: '100%', aspectRatio: '16/9', objectFit: 'cover', display: 'block', borderRadius: round }} />
-                )}
-                {modal.media.length > 1 && <>
-                  <span className="marr" style={{ left: 10, cursor: 'pointer' }} onClick={e => { e.stopPropagation(); setPic((mi - 1 + modal.media.length) % modal.media.length); }}>‹</span>
-                  <span className="marr" style={{ right: 10, cursor: 'pointer' }} onClick={e => { e.stopPropagation(); setPic((mi + 1) % modal.media.length); }}>›</span>
-                  <span style={{ position: 'absolute', left: 0, right: 0, bottom: 10, display: 'flex', justifyContent: 'center', gap: 6 }}>
-                    {modal.media.map((_, i) => (
-                      <span key={i} onClick={e => { e.stopPropagation(); setPic(i); }} style={{ width: 7, height: 7, borderRadius: 99, cursor: 'pointer', background: i === mi ? '#f3f3f3' : 'rgba(255,255,255,.35)', transform: i === mi ? 'scale(1.25)' : 'scale(1)', transition: 'background .2s ease, transform .2s ease' }} />
-                    ))}
-                  </span>
-                </>}
+                <MediaCarousel media={modal.media} mode="modal" motionOk={motionOk} startIndex={Math.min(pic, modal.media.length - 1)} radius="13px 13px 0 0" />
               </div>
-              );
-            })()}
+            )}
             <div style={{ padding: '26px 28px 28px' }}>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 14 }}>
                 <span style={{ fontSize: 24, letterSpacing: '-0.01em' }}>{modal.title}</span>
