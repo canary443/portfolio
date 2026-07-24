@@ -71,11 +71,6 @@ a:hover { color: var(--text-strong); }
 /* target cursor: preflight is off, so borders need an explicit style to show */
 .target-cursor-corner { border-style: solid; }
 
-/* liquid glass: a slow reflection sweep across the nav pill and language switcher */
-.glass-sheen { position: absolute; inset: 0; border-radius: inherit; overflow: hidden; pointer-events: none; z-index: 1; }
-.glass-sheen::before { content: ""; position: absolute; top: 0; left: -60%; width: 45%; height: 100%; background: linear-gradient(105deg, transparent, rgba(255,255,255,.10), transparent); transform: skewX(-18deg); animation: zxsheen 7s ease-in-out infinite; }
-@keyframes zxsheen { 0% { left: -60%; } 55%, 100% { left: 130%; } }
-
 /* hover states (inline styles cannot do :hover) */
 .navlnk { color: var(--muted); text-decoration: none; transition: color .15s ease; }
 .navlnk:hover { color: var(--text); }
@@ -108,8 +103,8 @@ a:hover { color: var(--text-strong); }
 .ulink:hover { color: var(--text-strong); }
 
 /* language picker, 1:1 from binware.su */
-/* dark liquid glass on the language switcher */
-.header_lang_item { position: relative; width: 107px; height: 25px; display: flex; align-items: center; justify-content: space-between; padding: 0 2px; border-radius: 128px; background: rgba(20,20,22,.55); backdrop-filter: blur(14px) saturate(1.6); -webkit-backdrop-filter: blur(14px) saturate(1.6); border: 1px solid rgba(255,255,255,.09); box-shadow: inset 0 1px 0 rgba(255,255,255,.10), 0 6px 18px rgba(0,0,0,.35); cursor: pointer; user-select: none; }
+/* flat dark frosted glass on the language switcher: no shine, no volume, no shadow */
+.header_lang_item { position: relative; width: 107px; height: 25px; display: flex; align-items: center; justify-content: space-between; padding: 0 2px; border-radius: 128px; background: rgba(20,20,22,.55); backdrop-filter: blur(14px) saturate(1.6); -webkit-backdrop-filter: blur(14px) saturate(1.6); border: 1px solid rgba(255,255,255,.09); cursor: pointer; user-select: none; }
 .header_lang_main { width: 79px; height: 23px; display: flex; align-items: center; justify-content: space-between; padding: 0 6px; border-radius: 128px; background: #1f1f1f; }
 .header_lang_main img { width: 17px; height: 17px; display: block; }
 .header_lang_main span { font-size: 12px; font-weight: 500; color: #f3f3f3; }
@@ -154,5 +149,4 @@ a:hover { color: var(--text-strong); }
   .card { transition: border-color .2s ease, opacity .3s ease; }
   .svc { transition: background .25s ease, opacity .3s ease; }
   .partner, .pill, .ghost { transition-property: opacity, background, border-color, color; }
-  .glass-sheen::before { animation: none; }
 }

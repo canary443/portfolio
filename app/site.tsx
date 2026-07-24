@@ -427,7 +427,7 @@ export default function Site({ initial }: { initial: SiteData }) {
           border: '1px solid ' + (sc ? 'var(--nav-border)' : 'transparent'),
           borderRadius: sc ? 9999 : 0, background: sc ? 'var(--nav-bg)' : 'var(--nav-bg-top)',
           backdropFilter: navBlur, WebkitBackdropFilter: navBlur,
-          boxShadow: sc ? '0 16px 48px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.14), inset 0 0 24px rgba(255,255,255,.045)' : 'none',
+          boxShadow: 'none',
           transition: `max-width .6s ${EASE}, height .6s ${EASE}, border-radius .6s ${EASE}, background .45s ease, border-color .45s ease, box-shadow .45s ease`
         }}>
           <div onClick={goTop} style={{ fontSize: 16, letterSpacing: '-0.01em', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}>AimworkSpace</div>
@@ -453,11 +453,7 @@ export default function Site({ initial }: { initial: SiteData }) {
                 <img src="/images/flags/usa.svg" alt="" /><span>English</span>
               </div>
             </div>
-            {/* liquid glass reflection sweep on the language switcher */}
-            <span className="glass-sheen" aria-hidden />
           </div>
-          {/* liquid glass reflection sweep on the round nav pill */}
-          {sc && <span className="glass-sheen" aria-hidden />}
         </div>
       </div>
 
