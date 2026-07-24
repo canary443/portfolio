@@ -513,7 +513,7 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
         {showImage ? (
           <div className="in3" style={{ position: 'relative', zIndex: 1, overflow: 'hidden', marginTop: 8 }}>
             {/* avif is tiny but ios lockdown mode can not decode it. fall back to png on error */}
-            <img ref={handsRef} src="/assets/hero-hands.avif" alt="" fetchPriority="high" onError={e => { const im = e.currentTarget; if (!im.dataset.fb) { im.dataset.fb = '1'; im.src = '/assets/hero-hands.png'; } }} style={{ width: '114%', marginLeft: '-7%', display: 'block', transform: 'scale(1.06)', willChange: reduced.current ? 'auto' : 'transform' }} />
+            <img ref={handsRef} src="/assets/kitokat-ascii-fine.avif" alt="" fetchPriority="high" onError={e => { const im = e.currentTarget; if (!im.dataset.fb) { im.dataset.fb = '1'; im.src = '/assets/kitokat-ascii-fine.png'; } }} style={{ width: '80%', margin: '0 auto', display: 'block', transform: 'scale(1.06)', willChange: reduced.current ? 'auto' : 'transform' }} />
           </div>
         ) : (
           // effect background (or still resolving): keep the hero tall, stay dark
