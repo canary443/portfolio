@@ -3,9 +3,10 @@
 
 import { useEffect, useRef, useState } from 'react';
 import {
-  loadData, saveData, resetData,
+  loadData, saveData, resetData, loadRemote, saveRemote, DEFAULTS,
   SiteData, Service, Work, TeamProject, FaqItem, LogEntry
 } from '@/lib/data';
+import { shrinkImage, dataUrlKb } from '@/lib/img';
 
 type Sec = 'about' | 'services' | 'works' | 'projects' | 'faq' | 'settings';
 type Form = Record<string, string>;
@@ -29,6 +30,9 @@ export default function Admin() {
   const [loginErr, setLoginErr] = useState('');
   const [wait, setWait] = useState(0);
   const [flash, setFlash] = useState('');
+  // errors stay on screen until the next save, a toast is too easy to miss
+  const [err, setErr] = useState('');
+  const [saving, setSaving] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
 
   const flashT = useRef<ReturnType<typeof setTimeout>>();
@@ -36,15 +40,39 @@ export default function Admin() {
   const drag = useRef<{ list: keyof SiteData; id: string } | null>(null);
   const busy = useRef(false);
 
+  // defined before the effects so they can call it
+  const show = (msg: string) => {
+    clearTimeout(flashT.current);
+    setFlash(msg);
+    flashT.current = setTimeout(() => setFlash(''), 1700);
+  };
+
   useEffect(() => {
-    const d = loadData();
-    setData(d);
-    setForm({ about: d.about, aboutRu: d.aboutRu || '' });
-    // ask the server if the session cookie is still valid
-    fetch('/api/admin/session')
-      .then(r => r.json())
-      .then(j => setAuth(!!j.ok))
-      .catch(() => setAuth(false));
+    const local = loadData();
+    setData(local);
+    setForm({ about: local.about, aboutRu: local.aboutRu || '' });
+    (async () => {
+      // ask the server if the session cookie is still valid, and pull shared content
+      const [remote, ok] = await Promise.all([
+        loadRemote(),
+        fetch('/api/admin/session').then(r => r.json()).then(j => !!j.ok).catch(() => false)
+      ]);
+      setAuth(ok);
+      if (remote) {
+        setData(remote); saveData(remote);
+        setForm({ about: remote.about, aboutRu: remote.aboutRu || '' });
+      } else if (ok) {
+        // server is still empty: upload what this browser already has, so
+        // nothing added before goes away. skip untouched demo content, or a
+        // fresh browser would push the demo over real work
+        if (JSON.stringify(local) === JSON.stringify(DEFAULTS)) {
+          show('server is empty, demo content not uploaded');
+        } else {
+          const r = await saveRemote(local);
+          show(r.ok ? 'content uploaded to the server' : 'upload failed: ' + r.err);
+        }
+      }
+    })();
     return () => clearTimeout(flashT.current);
   }, []);
 
@@ -59,14 +87,18 @@ export default function Admin() {
 
   const locked = wait > 0;
 
-  const show = (msg: string) => {
-    clearTimeout(flashT.current);
-    setFlash(msg);
-    flashT.current = setTimeout(() => setFlash(''), 1700);
-  };
-  const persist = (nd: SiteData, msg = 'saved') => {
-    if (!saveData(nd)) { show('save failed: storage full, remove some images/video'); return false; }
-    setData(nd); show(msg); return true;
+  // the server copy is the real one. localStorage is only a cache, so a full
+  // one must never block a save
+  const persist = async (nd: SiteData, msg = 'saved') => {
+    setErr('');
+    setSaving(true);
+    const r = await saveRemote(nd);
+    setSaving(false);
+    if (!r.ok) { setErr('not saved: ' + r.err); return false; }
+    setData(nd);
+    saveData(nd); // best effort, a full cache is fine
+    show(msg);
+    return true;
   };
   const F = (k: string) => form[k] || '';
   const onF = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
@@ -118,34 +150,40 @@ export default function Admin() {
     persist({ ...data, [list]: arr } as SiteData, 'reordered');
   };
 
-  const readImgs = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // photos are scaled down here, so a big phone photo is fine
+  const readImgs = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []).slice(0, 8);
+    e.target.value = '';
     if (!files.length) return;
-    if (files.some(f => f.size > 400000)) { show('file too big, max ~400kb each'); return; }
-    // count every reader that finishes (ok or failed) so one bad file does not stall the rest
-    let done = 0, failed = false; const out: string[] = [];
-    const finish = () => {
-      if (++done < files.length) return;
-      const ok = out.filter(Boolean);
-      if (ok.length) setImgs(p => [...p, ...ok]);
-      if (failed) show('some images could not be read');
-    };
-    files.forEach((f, i) => {
-      const r = new FileReader();
-      r.onload = () => { out[i] = r.result as string; finish(); };
-      r.onerror = () => { failed = true; finish(); };
-      r.readAsDataURL(f);
-    });
-    e.target.value = '';
+    show('adding photos...');
+    const done = await Promise.all(files.map(f => shrinkImage(f, 1400).catch(() => '')));
+    const ok = done.filter(Boolean);
+    if (ok.length) setImgs(p => [...p, ...ok]);
+    if (ok.length < files.length) show('some images could not be read');
+    else show(ok.length + ' photo(s) added, ' + dataUrlKb(ok.join('')) + 'kb');
   };
-  const readIcon = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // service icons stay png so a transparent logo keeps its background
+  const readIcon = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
-    if (!f) return;
-    if (f.size > 400000) { show('file too big, max ~400kb'); return; }
-    const r = new FileReader();
-    r.onload = () => setIcon(r.result as string);
-    r.readAsDataURL(f);
     e.target.value = '';
+    if (!f) return;
+    try {
+      const src = await shrinkImage(f, 128, 'image/png');
+      setIcon(src);
+      show('icon added, ' + dataUrlKb(src) + 'kb');
+    } catch { show('image could not be read'); }
+  };
+  // team project photo: a real photo, so jpeg
+  const readPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    e.target.value = '';
+    if (!f) return;
+    show('adding photo...');
+    try {
+      const src = await shrinkImage(f, 1400);
+      setIcon(src);
+      show('photo added, ' + dataUrlKb(src) + 'kb');
+    } catch { show('image could not be read'); }
   };
   const readVideo = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -167,21 +205,21 @@ export default function Admin() {
   // save handlers: keep the form open if the write was rejected (quota)
   const upsert = <T extends { id: string }>(arr: T[], item: T) =>
     editId ? arr.map(x => x.id === editId ? item : x) : [...arr, item];
-  const saveService = () => {
+  const saveService = async () => {
     if (!F('title').trim()) return;
     const item: Service = { id: editId || 's' + Date.now(), title: F('title').trim(), titleRu: F('titleRu').trim(), desc: F('desc').trim(), descRu: F('descRu').trim(), glyph: F('glyph').trim() || '▢', icon };
-    if (persist({ ...data, services: upsert(data.services, item) })) clearForm();
+    if (await persist({ ...data, services: upsert(data.services, item) })) clearForm();
   };
-  const saveWork = () => {
+  const saveWork = async () => {
     if (!F('title').trim() || !F('price').trim()) return;
     const vid = video || F('videoUrl').trim() || null;
     const item: Work = { id: editId || 'w' + Date.now(), title: F('title').trim(), titleRu: F('titleRu').trim(), price: F('price').trim(), date: F('date').trim(), link: F('link').trim(), video: vid, desc: F('desc').trim(), descRu: F('descRu').trim(), imgs, img: imgs[0] || null, changelog: logs };
-    if (persist({ ...data, works: upsert(data.works, item) })) clearForm();
+    if (await persist({ ...data, works: upsert(data.works, item) })) clearForm();
   };
-  const saveProject = () => {
+  const saveProject = async () => {
     if (!F('name').trim() || !F('role').trim()) return;
     const item: TeamProject = { id: editId || 'p' + Date.now(), name: F('name').trim(), role: F('role').trim(), roleRu: F('roleRu').trim(), from: F('from').trim() || '?', to: F('to').trim() || 'now', link: F('link').trim(), img: icon, changelog: logs };
-    if (persist({ ...data, projects: upsert(data.projects, item) })) clearForm();
+    if (await persist({ ...data, projects: upsert(data.projects, item) })) clearForm();
   };
 
   // changelog entry editor, shared by works and team projects
@@ -192,10 +230,10 @@ export default function Admin() {
     setLogs(p => [...p, { id: 'l' + Date.now(), date: F('logDate').trim() || today, text: F('logText').trim(), textRu: F('logTextRu').trim() }]);
     setForm(f => ({ ...f, logDate: '', logText: '', logTextRu: '' }));
   };
-  const saveFaq = () => {
+  const saveFaq = async () => {
     if (!F('fq').trim() || !F('fa').trim()) return;
     const item: FaqItem = { id: editId || 'f' + Date.now(), q: F('fq').trim(), a: F('fa').trim(), qRu: F('fqRu').trim(), aRu: F('faRu').trim() };
-    if (persist({ ...data, faq: upsert(data.faq, item) })) clearForm();
+    if (await persist({ ...data, faq: upsert(data.faq, item) })) clearForm();
   };
 
   const counts: Partial<Record<Sec, number>> = { services: data.services.length, works: data.works.length, projects: data.projects.length, faq: data.faq.length };
@@ -421,7 +459,7 @@ export default function Admin() {
                 </div>
                 {inp('link', 'link (optional)')}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 13, color: '#9c9c9c', flexWrap: 'wrap' }}>
-                  photo: <input type="file" accept="image/*" onChange={readIcon} style={{ fontSize: 12, color: '#9c9c9c' }} />
+                  photo: <input type="file" accept="image/*" onChange={readPhoto} style={{ fontSize: 12, color: '#9c9c9c' }} />
                   {icon && <><img src={icon} alt="" style={{ width: 52, height: 34, objectFit: 'cover', borderRadius: 6, border: '1px solid #212121' }} /><span className="adel" onClick={() => setIcon(null)}>clear</span></>}
                 </div>
                 {logEditor}
@@ -482,8 +520,9 @@ export default function Admin() {
                 if (!confirmReset) { setConfirmReset(true); return; }
                 resetData();
                 const nd = loadData();
-                setData(nd); setConfirmReset(false);
+                setConfirmReset(false);
                 setForm({ telegram: nd.telegram, github: nd.github, email: nd.email });
+                persist(nd, 'reset to defaults');
               }} style={{ border: '1px solid rgba(255,107,107,.4)', color: '#ff6b6b', borderRadius: 9999, padding: '9px 20px', fontSize: 14, cursor: 'pointer', userSelect: 'none', display: 'inline-block' }}>
                 {confirmReset ? 'Sure? Click again' : 'Reset all content to defaults'}
               </span>
@@ -491,6 +530,17 @@ export default function Admin() {
           </>}
         </div>
       </div>
+
+      {/* save error: stays until the next save */}
+      {!!err && (
+        <div style={{ position: 'fixed', left: 0, right: 0, top: 0, zIndex: 700, background: '#3a1414', borderBottom: '1px solid #ff6b6b', color: '#ffbcbc', padding: '11px 18px', fontSize: 13.5, display: 'flex', alignItems: 'center', gap: 14 }}>
+          <span>{err}</span>
+          <span onClick={() => setErr('')} style={{ marginLeft: 'auto', cursor: 'pointer', color: '#ff6b6b' }}>dismiss</span>
+        </div>
+      )}
+      {saving && (
+        <div style={{ position: 'fixed', left: 0, right: 0, top: 0, zIndex: 700, height: 2, background: '#f3f3f3', opacity: .5 }} />
+      )}
 
       {/* toast */}
       <div style={{ position: 'fixed', left: 0, bottom: 34, width: '100%', display: 'flex', justifyContent: 'center', pointerEvents: 'none', zIndex: 600 }}>
