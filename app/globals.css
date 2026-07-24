@@ -7,7 +7,7 @@
 @keyframes zxin { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 @keyframes zxmarq { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 @keyframes zxfade { from { opacity: 0; } to { opacity: 1; } }
-@keyframes zxmodal { from { opacity: 0; transform: translateY(16px) scale(.96); } to { opacity: 1; transform: none; } }
+@keyframes zxmodal { from { opacity: 0; transform: translateY(18px) scale(.95); filter: blur(7px); } to { opacity: 1; transform: none; filter: none; } }
 @keyframes zximg { from { opacity: 0; } to { opacity: 1; } }
 
 /* carousel image crossfade on src swap (element is re-keyed per index) */

@@ -292,7 +292,7 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
     if (!modalOpen.current) return;
     setClosing(true);
     clearTimeout(closeT.current);
-    closeT.current = setTimeout(() => { setModal(null); setClosing(false); }, 180);
+    closeT.current = setTimeout(() => { setModal(null); setClosing(false); }, 240);
   }, []);
 
   const openModal = useCallback((w: Item, ci: number) => {
@@ -750,8 +750,9 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
         const rm = reduced.current;
         const ovBlur = safari ? 'blur(5px)' : 'blur(10px)';
         return (
-        <div onClick={closeModal} style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(0,0,0,.66)', backdropFilter: ovBlur, WebkitBackdropFilter: ovBlur, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, opacity: closing ? 0 : undefined, transition: 'opacity .18s ease', animation: closing || rm ? 'none' : 'zxfade .3s ease both' }}>
-          <div onClick={e => e.stopPropagation()} data-lenis-prevent style={{ width: 'min(660px,94vw)', maxHeight: '86vh', overflow: 'auto', background: 'var(--card)', border: '1px solid var(--line-2)', borderRadius: 14, opacity: closing ? 0 : undefined, transform: closing && !rm ? 'translateY(8px) scale(.98)' : undefined, transition: `opacity .18s ease, transform .18s ${EASE}`, animation: closing || rm ? 'none' : `zxmodal .45s ${EASE} both` }}>
+        <div onClick={closeModal} style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(0,0,0,.66)', backdropFilter: ovBlur, WebkitBackdropFilter: ovBlur, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, opacity: closing ? 0 : undefined, transition: 'opacity .22s ease', animation: closing || rm ? 'none' : 'zxfade .3s ease both' }}>
+          {/* exit mirrors the entry path: drops back down, shrinks and blurs away, faster than it came in */}
+          <div onClick={e => e.stopPropagation()} data-lenis-prevent style={{ width: 'min(660px,94vw)', maxHeight: '86vh', overflow: 'auto', background: 'var(--card)', border: '1px solid var(--line-2)', borderRadius: 14, opacity: closing ? 0 : undefined, transform: closing && !rm ? 'translateY(16px) scale(.95)' : undefined, filter: closing && !rm ? 'blur(5px)' : undefined, transition: `opacity .2s ease, transform .26s ${EASE}, filter .2s ease`, animation: closing || rm ? 'none' : `zxmodal .45s ${EASE} both` }}>
             {modal.media.length > 0 && (() => {
               const mi = Math.min(pic, modal.media.length - 1);
               const cur = modal.media[mi];

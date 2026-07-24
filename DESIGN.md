@@ -26,16 +26,16 @@ Design reference for AimworkSpace. Based on the "Hyperstudio" style direction: e
 - **Nav**: fixed, transparent over content; on scroll morphs into a centered glass pill (max-width ~790px, radius 9999, `backdrop-filter: blur(16px) saturate(1.6)` + `-webkit-` prefix, border rgba(255,255,255,.12)); links stay centered, chat button stays visible.
 - **Buttons**: white pill (primary), ghost 8px-radius outline (secondary), magnetic hover (translate toward cursor), `scale(.97)` press. Cards press to `scale(.99)`.
 - **Cards**: `#151515`, 1px `#212121`, radius 8, image 16:10, hover: border `#474747` + translateY(-3px); "NO PIC" striped placeholder when no image.
-- **Modal**: radius 14, backdrop blur, `zxmodal` scale/fade entry.
+- **Modal**: radius 14, backdrop blur, `zxmodal` rise/scale/blur entry ("materialize"), mirrored faster exit.
 - **Section dividers**: label row `// NAME` + 1px hairline; contact block framed with `+` corner marks.
 
 ## Motion (Emil Kowalski school: fast, eased, transform/opacity only)
-- Easing: `cubic-bezier(.22,1,.36,1)` (the `--ease` CSS var), durations .15–.7s. Exits are faster than entries (modal: in .45s, out .18s).
+- Easing: `cubic-bezier(.22,1,.36,1)` (the `--ease` CSS var), durations .15–.7s. Exits are faster than entries (modal: in .45s, out ~.24s).
 - Page load: staggered `zxin` rise on hero via `.in0–.in3` classes (0 / .08s / .16s / .22s).
 - Scroll: lenis smooth scroll (`lerp: .09`, fine pointers with full motion only); hero pinned (`position:sticky`) while content slides over it as a rounded "sheet" (curtain effect), hero text scales to .95 and fades as it is covered; hands image gets slow parallax, size stays constant.
 - Reveal on scroll (IntersectionObserver, `data-reveal`): project cards rise 26px with a fade + 6px blur on a spring (`Reveal` primitive, motion), service cells rise 18px via CSS. Cards that enter the viewport in the same observer batch stagger left to right (65ms per card, capped at 260ms), so a row cascades at any column count.
 - Buttons: magnetic pull toward the cursor (transform composed in JS) + `scale(.97)` press feedback on pointer-down (CSS `:active` covers touch).
-- Modal: enters with `zxmodal` scale/fade, exits in 180ms (fade + 8px drop) before unmount; scroll is frozen underneath (lenis stop + body overflow).
+- Modal: enters with `zxmodal` in .45s - rises 18px, scales from .95 and clears a 7px blur (materialize). Exit mirrors the same path faster (~240ms): fades, drops 16px, scales to .95 and blurs to 5px, then unmounts. Reduced motion gets plain fades. Scroll is frozen underneath (lenis stop + body overflow).
 - Cursor: 9px dot, `mix-blend-mode:difference`, lerp .16, scales 2.6× over interactive elements, fades out when the pointer leaves the window; the rAF loop sleeps when settled. Native cursor hidden on fine pointers with full motion only.
 - Optional (tweaks): grain overlay (canvas noise, `mix-blend:overlay`), spotlight radial glow following the cursor on cards (resets on leave), animated stat counters (default off).
 
