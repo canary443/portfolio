@@ -362,7 +362,7 @@ export default function Page() {
         </div>
         {config.showMap && (
           <div className="in3" style={{ overflow: 'hidden', marginTop: 8 }}>
-            <img ref={handsRef} src="/assets/hero-hands.avif" alt="" fetchPriority="high" style={{ width: '114%', marginLeft: '-7%', display: 'block', transform: 'scale(1.06)', willChange: reduced.current ? 'auto' : 'transform' }} />
+            <img ref={handsRef} src="/assets/hero-hands.avif" alt="" fetchPriority="high" width={3217} height={935} className="hero-hands" style={{ display: 'block', transform: 'scale(1.06)', willChange: reduced.current ? 'auto' : 'transform' }} />
           </div>
         )}
       </div>
