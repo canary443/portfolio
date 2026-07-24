@@ -4,9 +4,10 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   loadData, saveData, resetData, loadRemote, saveRemote, DEFAULTS,
-  SiteData, Service, Work, TeamProject, FaqItem, LogEntry, HeroBg, CursorStyle, RuFont, HERO_PRESETS
+  SiteData, Service, Work, TeamProject, FaqItem, LogEntry, HeroBg, CursorStyle, RuFont, HeroArt, HERO_PRESETS
 } from '@/lib/data';
 import { shrinkImage, dataUrlKb, uploadMedia } from '@/lib/img';
+import { renderAscii } from '@/lib/ascii';
 import { T, type Dict } from '@/lib/i18n';
 
 // interface strings editable in the i18n section (key -> friendly label)
@@ -32,6 +33,8 @@ const FX_TOGGLES: [FxKey, string, boolean][] = [
   ['fxHeadlineReveal', 'Hero headline reveal', true],
   ['fxCardTilt', 'Project card tilt', false]
 ];
+// hero picture options for the 'image' background mode
+const HERO_ART_OPTS: [HeroArt, string][] = [['cat', 'Ascii cat'], ['hands', 'Dot hands'], ['custom', 'Custom']];
 // aspect choices for the about media; auto keeps the natural ratio
 const ABOUT_ASPECTS: [string, string][] = [['16/9', '16:9'], ['4/3', '4:3'], ['1/1', '1:1'], ['3/4', '3:4'], ['auto', 'Auto']];
 // cyrillic font options; the stack matches the one the site applies for ru
@@ -57,7 +60,7 @@ const SECTION_KEYS: Partial<Record<Sec, (keyof SiteData)[]>> = {
   works: ['works'],
   projects: ['projects'],
   faq: ['faq'],
-  settings: ['telegram', 'github', 'email', 'heroBg', 'heroPreset', 'cursorStyle', 'fxGradualBlur', 'fxHeadlineReveal', 'fxCardTilt', 'fontRu'],
+  settings: ['telegram', 'github', 'email', 'heroBg', 'heroArt', 'heroArtCustom', 'heroPreset', 'cursorStyle', 'fxGradualBlur', 'fxHeadlineReveal', 'fxCardTilt', 'fontRu'],
   i18n: ['i18n', 'i18nFontRu']
 };
 
@@ -90,6 +93,7 @@ export default function Admin() {
   const importRef = useRef<HTMLInputElement>(null);
   const importSec = useRef<Sec>('about');
   const aboutImgRef = useRef<HTMLInputElement>(null);
+  const heroImgRef = useRef<HTMLInputElement>(null);
 
   // defined before the effects so they can call it
   const show = (msg: string) => {
@@ -166,6 +170,22 @@ export default function Admin() {
     if (dataUrlKb(dataUrl) > 4200) { setErr('not saved: file is over ~4mb, compress the gif first'); return; }
     const url = await uploadMedia(dataUrl);
     persist({ ...data, aboutImg: url });
+  };
+  // custom hero picture: whatever gets uploaded is rendered into ascii art
+  // first, so the hero always keeps the glyphs-on-black look
+  const onHeroMedia = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    e.target.value = '';
+    if (!f) return;
+    try {
+      const dataUrl = await shrinkImage(f, 1600, 'image/jpeg', 900);
+      const ascii = await renderAscii(dataUrl);
+      if (dataUrlKb(ascii) > 4200) { setErr('not saved: the picture is too detailed, try a smaller one'); return; }
+      const url = await uploadMedia(ascii);
+      persist({ ...data, heroArt: 'custom', heroArtCustom: url });
+    } catch {
+      setErr('not saved: could not read that picture');
+    }
   };
   // save the slider width once the user lets go of it
   const commitAboutW = async () => {
@@ -736,6 +756,33 @@ export default function Admin() {
                     const active = (data.heroBg || 'image') === val;
                     return <span key={val} className="aghost" style={{ padding: '6px 14px', fontSize: 13, borderColor: active ? '#474747' : '#2a2a2a', color: active ? '#f3f3f3' : '#9c9c9c' }} onClick={() => persist({ ...data, heroBg: val })}>{label}</span>;
                   })}
+                </div>
+              </div>
+
+              {/* which picture sits in the hero when the background is 'image'
+                  (and as the fallback for effect modes on weak devices) */}
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '10px 0' }}>
+                <span style={{ fontSize: 14, width: 150, paddingTop: 6 }}>Hero image</span>
+                <div style={{ flex: 1 }}>
+                  <input ref={heroImgRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={onHeroMedia} />
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                    {HERO_ART_OPTS.map(([val, label]) => {
+                      const active = (data.heroArt || 'cat') === val;
+                      const pick = () => {
+                        if (val === 'custom' && !data.heroArtCustom) { heroImgRef.current?.click(); return; }
+                        persist({ ...data, heroArt: val });
+                      };
+                      return <span key={val} className="aghost" style={{ padding: '6px 14px', fontSize: 13, borderColor: active ? '#474747' : '#2a2a2a', color: active ? '#f3f3f3' : '#9c9c9c' }} onClick={pick}>{label}</span>;
+                    })}
+                    {!!data.heroArtCustom && <>
+                      <span className="aghost" style={{ padding: '6px 14px', fontSize: 13 }} onClick={() => heroImgRef.current?.click()}>Replace…</span>
+                      <span className="adel" onClick={() => persist({ ...data, heroArtCustom: null, heroArt: (data.heroArt || 'cat') === 'custom' ? 'cat' : data.heroArt })}>remove</span>
+                    </>}
+                  </div>
+                  <div style={{ marginTop: 6, fontSize: 12, color: '#474747' }}>custom: any picture you upload turns into the same ascii style by itself</div>
+                  {!!data.heroArtCustom && (
+                    <img src={data.heroArtCustom} alt="" style={{ marginTop: 10, width: 190, borderRadius: 8, border: '1px solid #212121', display: 'block', background: '#000' }} />
+                  )}
                 </div>
               </div>
 

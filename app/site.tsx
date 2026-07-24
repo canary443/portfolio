@@ -512,8 +512,17 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
         </div>
         {showImage ? (
           <div className="in3" style={{ position: 'relative', zIndex: 1, overflow: 'hidden', marginTop: 8 }}>
-            {/* avif is tiny but ios lockdown mode can not decode it. fall back to png on error */}
-            <img ref={handsRef} src="/assets/kitokat-ascii-fine.avif" alt="" fetchPriority="high" onError={e => { const im = e.currentTarget; if (!im.dataset.fb) { im.dataset.fb = '1'; im.src = '/assets/kitokat-ascii-fine.png'; } }} style={{ width: '80%', margin: '0 auto', display: 'block', transform: 'scale(1.06)', willChange: reduced.current ? 'auto' : 'transform' }} />
+            {/* hero art comes from the admin: ascii cat, dot hands or an uploaded picture.
+                avif is tiny but ios lockdown mode can not decode it - fall back to png on error */}
+            {(() => {
+              const kind = data.heroArt === 'custom' && !data.heroArtCustom ? 'cat' : (data.heroArt || 'cat');
+              const art = kind === 'custom'
+                ? { src: data.heroArtCustom!, fb: data.heroArtCustom!, style: { maxWidth: '86%', maxHeight: '58vh', margin: '0 auto' } }
+                : kind === 'hands'
+                  ? { src: '/assets/hero-hands.avif', fb: '/assets/hero-hands.png', style: { width: '114%', marginLeft: '-7%' } }
+                  : { src: '/assets/kitokat-ascii-fine.avif', fb: '/assets/kitokat-ascii-fine.png', style: { width: '80%', margin: '0 auto' } };
+              return <img key={art.src} ref={handsRef} src={art.src} alt="" fetchPriority="high" onError={e => { const im = e.currentTarget; if (!im.dataset.fb && art.fb !== art.src) { im.dataset.fb = '1'; im.src = art.fb; } }} style={{ ...art.style, display: 'block', transform: 'scale(1.06)', willChange: reduced.current ? 'auto' : 'transform' }} />;
+            })()}
           </div>
         ) : (
           // effect background (or still resolving): keep the hero tall, stay dark

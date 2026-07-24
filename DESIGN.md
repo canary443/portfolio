@@ -47,7 +47,7 @@ Design reference for AimworkSpace. Based on the "Hyperstudio" style direction: e
 ## Icons & imagery
 - simpleicons CDN for brand icons (`https://cdn.simpleicons.org/<slug>/<hex>`), 12–18px.
 - Service icons: gold text glyphs (▤ ◉ ↻ &lt;/&gt;) or user-uploaded images from the admin.
-- No photography except project screenshots; the only hero art is the ascii cat (`public/assets/kitokat-ascii-fine.avif`, real monospace glyphs rendered from `kitokat-raw.jpg`) on pure black, centered at 80% width. The old dot-matrix hands remain in `public/assets/hero-hands.*`.
+- No photography except project screenshots; the hero art sits on pure black and is picked in the admin (`heroArt`): the ascii cat (`kitokat-ascii-fine.avif`, real monospace glyphs rendered from `kitokat-raw.jpg`, 80% width) - default, the dot-matrix hands (`hero-hands.*`, full-bleed 114%), or an uploaded picture (92% width).
 
 ## Don'ts
 - No shadows for elevation (hairlines + contrast only; the only shadows are the nav pill and the curtain edge).

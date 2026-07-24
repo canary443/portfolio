@@ -32,6 +32,8 @@ export type HeroBg = 'image' | 'pixel-blast' | 'dither' | 'threads' | 'liquid-ch
 export type CursorStyle = 'dot' | 'pixel-trail' | 'target' | 'native';
 // cyrillic companion font for the russian locale (latin stays satoshi)
 export type RuFont = 'onest' | 'carlito' | 'jost';
+// hero picture when the background is 'image': ascii cat, dot hands or an upload
+export type HeroArt = 'cat' | 'hands' | 'custom';
 // color presets for the hero background effects (pixel blast, dither, ...)
 export const HERO_PRESETS: { id: string; label: string; color: string }[] = [
   { id: 'mono', label: 'Mono', color: '#8f8f8f' },
@@ -60,6 +62,7 @@ export interface SiteData {
   services: Service[]; works: Work[]; projects: TeamProject[]; faq: FaqItem[];
   // effects (flat fields so old saved data backfills from defaults)
   heroBg?: HeroBg; heroPreset?: string; cursorStyle?: CursorStyle;
+  heroArt?: HeroArt; heroArtCustom?: string | null;
   fxGradualBlur?: boolean; fxHeadlineReveal?: boolean;
   fxCardTilt?: boolean;
   fontRu?: RuFont;
@@ -81,6 +84,8 @@ export const DEFAULTS: SiteData = {
   github: 'canary443',
   email: 'contact@leet-cheats.xyz',
   heroBg: 'image',
+  heroArt: 'cat',
+  heroArtCustom: null,
   heroPreset: 'mono',
   cursorStyle: 'dot',
   fxGradualBlur: true,

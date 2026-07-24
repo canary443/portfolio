@@ -19,7 +19,9 @@ Flat top-level fields (flat, not nested — see the merge note below):
 
 | Field | Type | Default | What it controls |
 |---|---|---|---|
-| `heroBg` | `'image' \| 'pixel-blast' \| 'dither' \| 'threads'` | `image` | Hero background. `image` = AVIF hands (also the universal fallback). |
+| `heroBg` | `'image' \| 'pixel-blast' \| 'dither' \| 'threads'` | `image` | Hero background. `image` = the hero art picture (also the universal fallback). |
+| `heroArt` | `'cat' \| 'hands' \| 'custom'` | `cat` | Which picture the `image` mode shows: ascii cat, dot-art hands, or the uploaded one. |
+| `heroArtCustom` | `string \| null` | `null` | Custom hero picture URL. The admin upload auto-renders it into ascii art (`lib/ascii.ts`) before storing via `/api/upload`. |
 | `cursorStyle` | `'dot' \| 'pixel-trail' \| 'target' \| 'native'` | `dot` | Cursor. `target` = ReactBits TargetCursor (4 corners lock onto links/buttons/cards). Reduced-motion / touch force the plain cursor. |
 | `fxGradualBlur` | `boolean` | `true` | Cinematic progressive blur at the hero->sheet seam and section edges (pure CSS). |
 | `fxHeadlineReveal` | `boolean` | `true` | Animated hero headline reveal (uses `motion`, not GSAP). |
