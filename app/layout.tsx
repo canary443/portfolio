@@ -3,12 +3,21 @@ import { cookies } from 'next/headers';
 import './globals.css';
 
 export const metadata: Metadata = {
+  // link previews (telegram, twitter, discord) show the square cat
+  metadataBase: new URL('https://aimwork.space'),
   title: 'AimworkSpace',
   description: 'Full stack development. Sites, bots and automation.',
   openGraph: {
-    title: 'AimworkSpace',
-    description: 'Full stack development. Sites, bots and automation.',
-    type: 'website'
+    title: 'aimwork.space',
+    description: '@aimwork portfolio',
+    type: 'website',
+    images: [{ url: '/assets/og.jpg', width: 800, height: 800 }]
+  },
+  twitter: {
+    card: 'summary',
+    title: 'aimwork.space',
+    description: '@aimwork portfolio',
+    images: ['/assets/og.jpg']
   }
 };
 
