@@ -56,7 +56,7 @@ const SECTION_KEYS: Partial<Record<Sec, (keyof SiteData)[]>> = {
   projects: ['projects'],
   faq: ['faq'],
   settings: ['telegram', 'github', 'email', 'heroBg', 'heroPreset', 'cursorStyle', 'fxGradualBlur', 'fxHeadlineReveal', 'fxCardTilt', 'fontRu'],
-  i18n: ['i18n']
+  i18n: ['i18n', 'i18nFontRu']
 };
 
 export default function Admin() {
@@ -733,14 +733,24 @@ export default function Admin() {
           {/* interface text (i18n) */}
           {sec === 'i18n' && <>
             <div style={{ fontSize: 22 }}>Interface text</div>
-            <div style={{ margin: '4px 0 18px', fontSize: 13, color: '#9c9c9c', lineHeight: 1.6 }}>Static UI strings in English and Russian. Leave a field empty to use the built-in default (shown greyed as the placeholder). Left = EN, right = RU.</div>
+            <div style={{ margin: '4px 0 18px', fontSize: 13, color: '#9c9c9c', lineHeight: 1.6 }}>Static UI strings in English and Russian. Leave a field empty to use the built-in default (shown greyed as the placeholder). Left = EN, right = RU. The font chips under a Russian field style that one string only and save on click; Global follows the font from Settings.</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 760 }}>
               {I18N_FIELDS.map(([key, label]) => (
                 <div key={String(key)}>
                   <div style={{ fontSize: 12, color: '#9c9c9c', marginBottom: 6 }}>{label} <span style={{ color: '#474747' }}>({String(key)})</span></div>
                   <div style={{ display: 'flex', gap: 10 }}>
                     {inp('en_' + String(key), T.en[key], { flex: 1 })}
-                    {inp('ru_' + String(key), T.ru[key], { flex: 1 })}
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 7 }}>
+                      {inp('ru_' + String(key), T.ru[key])}
+                      {/* font for this one russian string; global = the settings font */}
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                        <span className="aghost" style={{ padding: '3px 10px', fontSize: 11, borderColor: !data.i18nFontRu?.[key] ? '#474747' : '#2a2a2a', color: !data.i18nFontRu?.[key] ? '#f3f3f3' : '#9c9c9c' }} onClick={() => { const m = { ...(data.i18nFontRu || {}) }; delete m[key]; persist({ ...data, i18nFontRu: m }); }}>Global</span>
+                        {RU_FONT_OPTS.map(([val, lab, stack]) => {
+                          const active = data.i18nFontRu?.[key] === val;
+                          return <span key={val} className="aghost" style={{ padding: '3px 10px', fontSize: 11, fontFamily: stack, borderColor: active ? '#474747' : '#2a2a2a', color: active ? '#f3f3f3' : '#9c9c9c' }} onClick={() => persist({ ...data, i18nFontRu: { ...(data.i18nFontRu || {}), [key]: val } })}>{lab}</span>;
+                        })}
+                      </div>
+                    </div>
                   </div>
                 </div>
               ))}

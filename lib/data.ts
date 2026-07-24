@@ -56,6 +56,8 @@ export interface SiteData {
   fxGradualBlur?: boolean; fxHeadlineReveal?: boolean;
   fxCardTilt?: boolean;
   fontRu?: RuFont;
+  // per string font override for russian ui text; missing key follows fontRu
+  i18nFontRu?: Partial<Record<keyof Dict, RuFont>>;
   // interface text overrides per language; empty/missing falls back to lib/i18n defaults
   i18n?: Partial<Record<Lang, Partial<Dict>>>;
 }

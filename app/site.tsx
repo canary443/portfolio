@@ -9,7 +9,7 @@ import { Layers } from '@/components/animate-ui/icons/layers';
 import { Cog } from '@/components/animate-ui/icons/cog';
 import { Binary } from '@/components/animate-ui/icons/binary';
 import { loadRemote, fetchRub, SiteData, LogEntry } from '@/lib/data';
-import { T, Lang } from '@/lib/i18n';
+import { T, Lang, type Dict } from '@/lib/i18n';
 import { config } from '@/lib/config';
 import { webglSupported } from '@/lib/fx';
 import HeroFx from '@/components/fx/HeroFx';
@@ -26,6 +26,8 @@ interface Item {
   id: string; media: Media[];
   title: string; link: string; sub: string; cat: string;
   metaDim: string; metaMain: string; metaSub: string; place: string;
+  // per string ru font, resolved from the i18n key that filled the field
+  metaFont?: React.CSSProperties; placeFont?: React.CSSProperties;
   changelog: LogEntry[];
 }
 
@@ -58,8 +60,8 @@ const STACK_LOGOS = STACK.map(([slug, label, href]) => ({
 const CHEV = (<path d="M10.0878 4.83761C10.3157 4.6098 10.6849 4.6098 10.9127 4.83761C11.1405 5.06542 11.1405 5.43469 10.9127 5.66248L7.41272 9.16248C7.18493 9.39027 6.81566 9.39024 6.58785 9.16248L3.08785 5.66248C2.86004 5.43467 2.86004 5.06542 3.08785 4.83761C3.31565 4.6098 3.68491 4.6098 3.91272 4.83761L7.00028 7.92518L10.0878 4.83761Z" />);
 
 // which cyrillic font backs satoshi in the russian locale
-const RU_FONT_STACK: Record<string, string | undefined> = {
-  onest: undefined,
+const RU_FONT_STACK: Record<string, string> = {
+  onest: "'Satoshi', 'Onest', ui-sans-serif, system-ui, sans-serif",
   carlito: "'Satoshi', 'Carlito', ui-sans-serif, system-ui, sans-serif",
   jost: "'Satoshi', 'Jost', ui-sans-serif, system-ui, sans-serif"
 };
@@ -317,6 +319,11 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
   // admin can override any interface string per language; empty falls back to the default
   const t = { ...T[lang], ...(data.i18n?.[lang] ?? {}) } as (typeof T)[Lang];
   const ru = lang === 'ru';
+  // per string font override for ru, picked in the admin interface-text page
+  const rf = (k: keyof Dict): React.CSSProperties | undefined => {
+    const f = ru ? data.i18nFontRu?.[k] : undefined;
+    return f ? { fontFamily: RU_FONT_STACK[f] } : undefined;
+  };
 
   // step one card carousel to its next slide
   const advanceCard = useCallback((id: string) => {
@@ -412,6 +419,7 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
         title: ru && w.titleRu ? w.titleRu : w.title, link: w.link,
         sub: ru && w.descRu ? w.descRu : w.desc, cat: w.date || '',
         metaDim: t.madeFor, metaMain: usd, metaSub: rubP, place: t.photoSoon,
+        metaFont: rf('madeFor'), placeFont: rf('photoSoon'),
         changelog: w.changelog || []
       };
     }),
@@ -420,6 +428,7 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
       title: p.name, link: p.link, sub: '',
       cat: ru && p.roleRu ? p.roleRu : p.role,
       metaDim: '', metaMain: p.from + ' - ' + p.to, metaSub: '', place: t.team,
+      placeFont: rf('team'),
       changelog: p.changelog || []
     }))
   ];
@@ -464,9 +473,9 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
         }}>
           <div onClick={goTop} style={{ fontSize: 16, letterSpacing: '-0.01em', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}>AimworkSpace</div>
           <div className="nav-center" style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-50%)', display: 'flex', gap: 22, fontSize: 14 }}>
-            <a href="#services" className="navlnk">{t.navS}</a>
-            <a href="#projects" className="navlnk">{t.navP}</a>
-            <a href="#contact" className="navlnk">{t.navC}</a>
+            <a href="#services" className="navlnk" style={rf('navS')}>{t.navS}</a>
+            <a href="#projects" className="navlnk" style={rf('navP')}>{t.navP}</a>
+            <a href="#contact" className="navlnk" style={rf('navC')}>{t.navC}</a>
           </div>
           {/* language picker, 1:1 from binware.su */}
           <div className="header_lang_item" ref={langRef} style={{ marginLeft: 'auto' }} onClick={() => setLangOpen(o => !o)}>
@@ -494,11 +503,11 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
         {/* webgl background, only on capable devices. plain image is the fallback */}
         {heroFxOn && <HeroFx bg={heroBg} preset={data.heroPreset} />}
         <div ref={heroRef} style={{ position: 'relative', zIndex: 1, maxWidth: 1200, margin: '0 auto', padding: '104px 28px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', transformOrigin: '50% 30%', willChange: reduced.current ? 'auto' : 'transform,opacity' }}>
-          <h1 className="in0" style={{ margin: 0, fontSize: 'clamp(38px,5.2vw,60px)', fontWeight: 400, lineHeight: 1.05, letterSpacing: '-0.011em', maxWidth: '17ch', textWrap: 'balance' }}>{headlineOn ? <HeadlineReveal text={t.heroT} /> : t.heroT}</h1>
-          <div className="in1" style={{ marginTop: 14, fontSize: 18, lineHeight: 1.4, color: 'var(--muted)', maxWidth: '46ch', textWrap: 'balance' }}>{t.heroSub}</div>
+          <h1 className="in0" style={{ margin: 0, fontSize: 'clamp(38px,5.2vw,60px)', fontWeight: 400, lineHeight: 1.05, letterSpacing: '-0.011em', maxWidth: '17ch', textWrap: 'balance', ...rf('heroT') }}>{headlineOn ? <HeadlineReveal text={t.heroT} /> : t.heroT}</h1>
+          <div className="in1" style={{ marginTop: 14, fontSize: 18, lineHeight: 1.4, color: 'var(--muted)', maxWidth: '46ch', textWrap: 'balance', ...rf('heroSub') }}>{t.heroSub}</div>
           <div className="in2" style={{ display: 'flex', gap: 12, marginTop: 24 }}>
-            <a href={tgHref} target="_blank" className="pill">{t.start} ↗</a>
-            <a href="#projects" className="ghost">{t.view} ↓</a>
+            <a href={tgHref} target="_blank" className="pill" style={rf('start')}>{t.start} ↗</a>
+            <a href="#projects" className="ghost" style={rf('view')}>{t.view} ↓</a>
           </div>
         </div>
         {showImage ? (
@@ -521,7 +530,7 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
             <span style={{ fontSize: 13, letterSpacing: '.12em', color: 'var(--muted)' }}>{'// SERVICES'}</span>
             <span style={{ flex: 1, borderTop: '1px solid var(--line)' }} />
           </div>
-          <h2 style={{ margin: '0 0 40px', fontSize: 'clamp(30px,3.4vw,44px)', fontWeight: 400, lineHeight: 1.07, letterSpacing: '-0.007em' }}>{t.svcH}</h2>
+          <h2 style={{ margin: '0 0 40px', fontSize: 'clamp(30px,3.4vw,44px)', fontWeight: 400, lineHeight: 1.07, letterSpacing: '-0.007em', ...rf('svcH') }}>{t.svcH}</h2>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1, border: '1px solid var(--line)', background: 'var(--line)' }}>
             {services.map(s => {
               const on = revealAll || revealed['svc-' + s.id] !== undefined;
@@ -565,7 +574,7 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
             <span style={{ flex: 1, borderTop: '1px solid var(--line)' }} />
             <span style={{ fontSize: 13, color: 'var(--faint)' }}>({items.length})</span>
           </div>
-          <h2 style={{ margin: '0 0 40px', fontSize: 'clamp(30px,3.4vw,44px)', fontWeight: 400, lineHeight: 1.07, letterSpacing: '-0.007em' }}>{t.projH}</h2>
+          <h2 style={{ margin: '0 0 40px', fontSize: 'clamp(30px,3.4vw,44px)', fontWeight: 400, lineHeight: 1.07, letterSpacing: '-0.007em', ...rf('projH') }}>{t.projH}</h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(340px,1fr))', gap: 22 }}>
             {items.map(w => {
               const on = revealAll || revealed[w.id] !== undefined;
@@ -603,7 +612,7 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
                     </span>
                   ) : (
                     <div style={{ width: '100%', aspectRatio: '16/10', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'repeating-linear-gradient(45deg,var(--bg) 0px,var(--bg) 9px,var(--card-2) 9px,var(--card-2) 18px)', borderBottom: '1px solid var(--line)' }}>
-                      <span style={{ fontSize: 12, letterSpacing: '.14em', color: 'var(--faint)' }}>{w.place}</span>
+                      <span style={{ fontSize: 12, letterSpacing: '.14em', color: 'var(--faint)', ...w.placeFont }}>{w.place}</span>
                     </div>
                   )}
                   <div style={{ padding: '16px 18px 18px' }}>
@@ -611,7 +620,7 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
                       <span style={{ fontSize: 17, letterSpacing: '-0.005em', minWidth: 0 }}>{w.title}</span>
                       {!!w.link && <span style={{ fontSize: 12, color: 'var(--muted)' }}>↗</span>}
                       <span style={{ marginLeft: 'auto', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                        <span style={{ fontSize: 13 }}><span style={{ color: 'var(--muted)' }}>{w.metaDim}</span><span>{w.metaMain}</span></span>
+                        <span style={{ fontSize: 13 }}><span style={{ color: 'var(--muted)', ...w.metaFont }}>{w.metaDim}</span><span>{w.metaMain}</span></span>
                         {!!w.metaSub && <span style={{ display: 'block', fontSize: 11.5, color: 'var(--muted)', marginTop: 2 }}>{w.metaSub}</span>}
                       </span>
                     </div>
@@ -626,7 +635,7 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
 
           {/* featured in */}
           <div style={{ marginTop: 70, borderTop: '1px solid var(--line)', paddingTop: 44, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 30 }}>
-            <span style={{ fontSize: 13, letterSpacing: '.12em', color: 'var(--muted)', textAlign: 'center' }}>{t.feat}</span>
+            <span style={{ fontSize: 13, letterSpacing: '.12em', color: 'var(--muted)', textAlign: 'center', ...rf('feat') }}>{t.feat}</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: 60, flexWrap: 'wrap', justifyContent: 'center' }}>
               <a href="https://leet-cheats.xyz" target="_blank" className="partner" style={{ display: 'block' }}>
                 <img src="/assets/leet-cheats.svg" alt="leet-cheats.xyz" style={{ height: 42, display: 'block' }} />
@@ -642,10 +651,10 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
         {/* about */}
         {config.showAbout && (
           <div style={{ maxWidth: 620, margin: '0 auto', padding: '120px 28px 0', textAlign: 'center' }}>
-            <div style={{ fontSize: 23 }}>{t.aboutH}</div>
+            <div style={{ fontSize: 23, ...rf('aboutH') }}>{t.aboutH}</div>
             <div style={{ marginTop: 16, fontSize: 16, lineHeight: 1.65, color: 'var(--muted)' }}>{renderAbout(aboutText)}</div>
             <div style={{ marginTop: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, flexWrap: 'wrap' }}>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 9, color: 'var(--muted)', fontSize: 14 }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 9, color: 'var(--muted)', fontSize: 14, ...rf('based') }}>
                 <span style={{ display: 'inline-block', width: 21, height: 15, borderRadius: 2, overflow: 'hidden', border: '1px solid var(--line-2)' }}>
                   <span style={{ display: 'block', height: 5, background: '#000' }} />
                   <span style={{ display: 'block', height: 5, background: '#dd0000' }} />
@@ -663,7 +672,7 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
             <span style={{ fontSize: 13, letterSpacing: '.12em', color: 'var(--muted)' }}>{'// FAQ'}</span>
             <span style={{ flex: 1, borderTop: '1px solid var(--line)' }} />
           </div>
-          <h2 style={{ margin: '0 0 26px', fontSize: 'clamp(28px,3vw,38px)', fontWeight: 400, lineHeight: 1.07, letterSpacing: '-0.007em' }}>{t.faqH}</h2>
+          <h2 style={{ margin: '0 0 26px', fontSize: 'clamp(28px,3vw,38px)', fontWeight: 400, lineHeight: 1.07, letterSpacing: '-0.007em', ...rf('faqH') }}>{t.faqH}</h2>
           {data.faq.map(q => {
             const open = faqOpen === q.id;
             return (
@@ -689,8 +698,8 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
             {(['left', 'right'] as const).map(sx => (['top', 'bottom'] as const).map(sy => (
               <span key={sx + sy} style={{ position: 'absolute', [sx]: -3, [sy]: sy === 'top' ? -9 : -8, color: 'var(--faint)', fontSize: 13, lineHeight: 1 }}>+</span>
             )))}
-            <h2 style={{ margin: 0, fontSize: 'clamp(30px,3.4vw,44px)', fontWeight: 400, lineHeight: 1.07, letterSpacing: '-0.007em', maxWidth: '22ch', textWrap: 'balance' }}>{t.ctH}</h2>
-            <div style={{ marginTop: 10, fontSize: 16, color: 'var(--muted)' }}>{t.ctSub}</div>
+            <h2 style={{ margin: 0, fontSize: 'clamp(30px,3.4vw,44px)', fontWeight: 400, lineHeight: 1.07, letterSpacing: '-0.007em', maxWidth: '22ch', textWrap: 'balance', ...rf('ctH') }}>{t.ctH}</h2>
+            <div style={{ marginTop: 10, fontSize: 16, color: 'var(--muted)', ...rf('ctSub') }}>{t.ctSub}</div>
             <div style={{ display: 'flex', gap: 12, marginTop: 28 }}>
               <a href={tgHref} target="_blank" className="pill">
                 <img src="https://cdn.simpleicons.org/telegram/000000" alt="" style={{ width: 15, height: 15, display: 'block' }} />Telegram
@@ -699,7 +708,7 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
                 <img src="https://cdn.simpleicons.org/github/f3f3f3" alt="" style={{ width: 15, height: 15, display: 'block' }} />GitHub
               </a>
             </div>
-            <div style={{ marginTop: 22, fontSize: 14, color: 'var(--muted)' }}>
+            <div style={{ marginTop: 22, fontSize: 14, color: 'var(--muted)', ...rf('dm') }}>
               {t.dm} -&gt; <a href={tgHref} target="_blank" className="ulink">@{data.telegram}</a> · <span className="ulink" title="click to copy" style={{ textDecorationStyle: 'dotted', cursor: 'pointer' }} onClick={() => { navigator.clipboard?.writeText(email).catch(() => {}); showToast(t.copied); }}>{email}</span>
             </div>
           </div>
@@ -754,7 +763,7 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 14 }}>
                 <span style={{ fontSize: 24, letterSpacing: '-0.01em' }}>{modal.title}</span>
                 <span style={{ marginLeft: 'auto', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                  <span style={{ fontSize: 14 }}><span style={{ color: 'var(--muted)' }}>{modal.metaDim}</span><span>{modal.metaMain}</span></span>
+                  <span style={{ fontSize: 14 }}><span style={{ color: 'var(--muted)', ...modal.metaFont }}>{modal.metaDim}</span><span>{modal.metaMain}</span></span>
                   {!!modal.metaSub && <span style={{ display: 'block', fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>{modal.metaSub}</span>}
                 </span>
               </div>
@@ -763,7 +772,7 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
               {modal.changelog.length > 0 && (
                 <div style={{ marginTop: 24 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                    <span style={{ fontSize: 12, letterSpacing: '.12em', color: 'var(--muted)' }}>{'// ' + t.chlog}</span>
+                    <span style={{ fontSize: 12, letterSpacing: '.12em', color: 'var(--muted)', ...rf('chlog') }}>{'// ' + t.chlog}</span>
                     <span style={{ flex: 1, borderTop: '1px solid var(--line)' }} />
                   </div>
                   {modal.changelog.map(en => (
@@ -775,8 +784,8 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
                 </div>
               )}
               <div style={{ display: 'flex', gap: 12, marginTop: 24 }}>
-                {!!modal.link && <a href={modal.link} target="_blank" className="pill" style={{ padding: '11px 22px' }}>{t.open} ↗</a>}
-                <span className="ghost" style={{ padding: '11px 22px', cursor: 'pointer', userSelect: 'none' }} onClick={closeModal}>{t.close}</span>
+                {!!modal.link && <a href={modal.link} target="_blank" className="pill" style={{ padding: '11px 22px', ...rf('open') }}>{t.open} ↗</a>}
+                <span className="ghost" style={{ padding: '11px 22px', cursor: 'pointer', userSelect: 'none', ...rf('close') }} onClick={closeModal}>{t.close}</span>
               </div>
             </div>
           </div>
@@ -791,7 +800,7 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
 
       {/* toast: sits above the page-bottom gradual blur (~1100) so it stays crisp */}
       <div style={{ position: 'fixed', left: 0, bottom: 34, width: '100%', display: 'flex', justifyContent: 'center', pointerEvents: 'none', zIndex: 2000 }}>
-        <span style={{ background: 'var(--inv-bg)', color: 'var(--inv-text)', borderRadius: 9999, padding: '9px 18px', fontSize: 13, opacity: toast ? 1 : 0, transform: toast ? 'translateY(0)' : 'translateY(14px)', transition: `opacity .35s ease, transform .4s ${EASE}` }}>{toast || ' '}</span>
+        <span style={{ background: 'var(--inv-bg)', color: 'var(--inv-text)', borderRadius: 9999, padding: '9px 18px', fontSize: 13, opacity: toast ? 1 : 0, transform: toast ? 'translateY(0)' : 'translateY(14px)', transition: `opacity .35s ease, transform .4s ${EASE}`, ...rf('copied') }}>{toast || ' '}</span>
       </div>
 
       {/* cursor dot: safari uses the native cursor to avoid frame lag */}
