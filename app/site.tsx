@@ -121,6 +121,15 @@ export default function Site({ initial }: { initial: SiteData }) {
   useEffect(() => {
     setLangState((localStorage.getItem('zx_lang') as Lang) || 'en');
     fetchRub().then(setRub);
+    // preview mode (admin iframe): paint from the draft the admin writes to
+    // localStorage and live-update on storage events, do not pull the server
+    const preview = new URLSearchParams(window.location.search).get('preview') === '1';
+    if (preview) {
+      try { const d = JSON.parse(localStorage.getItem('zx_preview') || 'null'); if (d) setData(d); } catch {}
+      const onStorage = (e: StorageEvent) => { if (e.key === 'zx_preview' && e.newValue) { try { setData(JSON.parse(e.newValue)); } catch {} } };
+      window.addEventListener('storage', onStorage);
+      return () => window.removeEventListener('storage', onStorage);
+    }
     const onFocus = () => loadRemote().then(d => { if (d) setData(d); });
     window.addEventListener('focus', onFocus);
     return () => window.removeEventListener('focus', onFocus);

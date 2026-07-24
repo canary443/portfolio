@@ -8,13 +8,24 @@ import {
 } from '@/lib/data';
 import { shrinkImage, dataUrlKb } from '@/lib/img';
 
-type Sec = 'about' | 'services' | 'works' | 'projects' | 'faq' | 'settings';
+type Sec = 'about' | 'services' | 'works' | 'projects' | 'faq' | 'settings' | 'preview';
 type Form = Record<string, string>;
 
 const NAV: [Sec, string][] = [
   ['about', 'About'], ['services', 'Services'], ['works', 'For sale'],
-  ['projects', 'Team projects'], ['faq', 'FAQ'], ['settings', 'Settings']
+  ['projects', 'Team projects'], ['faq', 'FAQ'], ['settings', 'Settings'],
+  ['preview', 'Live preview']
 ];
+
+// which SiteData keys each page owns, for json export / import
+const SECTION_KEYS: Partial<Record<Sec, (keyof SiteData)[]>> = {
+  about: ['about', 'aboutRu'],
+  services: ['services'],
+  works: ['works'],
+  projects: ['projects'],
+  faq: ['faq'],
+  settings: ['telegram', 'github', 'email']
+};
 
 export default function Admin() {
   const [auth, setAuth] = useState<boolean | null>(null);
@@ -34,11 +45,14 @@ export default function Admin() {
   const [err, setErr] = useState('');
   const [saving, setSaving] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
+  const [device, setDevice] = useState<'desktop' | 'mobile'>('desktop');
 
   const flashT = useRef<ReturnType<typeof setTimeout>>();
   const aboutRef = useRef<HTMLTextAreaElement>(null);
   const drag = useRef<{ list: keyof SiteData; id: string } | null>(null);
   const busy = useRef(false);
+  const importRef = useRef<HTMLInputElement>(null);
+  const importSec = useRef<Sec>('about');
 
   // defined before the effects so they can call it
   const show = (msg: string) => {
@@ -83,6 +97,12 @@ export default function Admin() {
     return () => clearInterval(iv);
   }, [wait > 0]);
 
+  // keep the live-preview iframe in sync with the current content
+  useEffect(() => {
+    if (!data) return;
+    try { localStorage.setItem('zx_preview', JSON.stringify(data)); } catch {}
+  }, [data]);
+
   if (!data || auth === null) return null;
 
   const locked = wait > 0;
@@ -104,6 +124,60 @@ export default function Admin() {
   const onF = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
     setForm(f => ({ ...f, [k]: e.target.value }));
   const clearForm = () => { setForm({}); setImgs([]); setIcon(null); setVideo(''); setLogs([]); setEditId(null); };
+
+  // json export / import per page
+  const downloadJson = (name: string, obj: unknown) => {
+    const blob = new Blob([JSON.stringify(obj, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = name; a.click();
+    URL.revokeObjectURL(url);
+  };
+  const exportSection = (s: Sec) => {
+    const keys = SECTION_KEYS[s];
+    if (!keys) return;
+    const obj: Record<string, unknown> = {};
+    keys.forEach(k => { obj[k] = data[k]; });
+    downloadJson('aimwork-' + s + '.json', obj);
+  };
+  const pickImport = (s: Sec) => { importSec.current = s; importRef.current?.click(); };
+  const onImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    e.target.value = '';
+    if (!f) return;
+    const s = importSec.current;
+    const keys = s === ('all' as Sec)
+      ? (['about', 'aboutRu', 'telegram', 'github', 'email', 'services', 'works', 'projects', 'faq'] as (keyof SiteData)[])
+      : SECTION_KEYS[s];
+    if (!keys) return;
+    try {
+      // a bare array is fine for a single-list page
+      let parsed = JSON.parse(await f.text());
+      if (Array.isArray(parsed) && keys.length === 1) parsed = { [keys[0]]: parsed };
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) { setErr('import failed: not a json object'); return; }
+      const next: SiteData = { ...data };
+      let touched = false;
+      for (const k of keys) {
+        if (!(k in parsed)) continue;
+        const v = (parsed as Record<string, unknown>)[k];
+        if (Array.isArray(data[k]) && !Array.isArray(v)) { setErr('import failed: "' + String(k) + '" must be a list'); return; }
+        (next as unknown as Record<string, unknown>)[k] = v;
+        touched = true;
+      }
+      if (!touched) { setErr('import failed: no fields for this page in the file'); return; }
+      if (await persist(next, 'imported')) {
+        if (s === 'about') setForm({ about: next.about, aboutRu: next.aboutRu || '' });
+        else if (s === 'settings') setForm({ telegram: next.telegram, github: next.github, email: next.email });
+        else clearForm();
+      }
+    } catch { setErr('import failed: bad json'); }
+  };
+  const ioBar = (s: Sec) => (
+    <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
+      <span className="aghost" style={{ padding: '6px 14px', fontSize: 13 }} onClick={() => exportSection(s)}>Export JSON</span>
+      <span className="aghost" style={{ padding: '6px 14px', fontSize: 13 }} onClick={() => pickImport(s)}>Import JSON</span>
+    </div>
+  );
 
   const goSec = (k: Sec) => {
     setSec(k); clearForm(); setConfirmReset(false);
@@ -306,6 +380,7 @@ export default function Admin() {
         </div>
 
         <div style={{ flex: 1, minWidth: 0 }}>
+          {sec !== 'preview' && ioBar(sec)}
           {/* about */}
           {sec === 'about' && <>
             <div style={{ fontSize: 22 }}>About</div>
@@ -528,8 +603,35 @@ export default function Admin() {
               </span>
             </div>
           </>}
+
+          {/* live preview */}
+          {sec === 'preview' && <>
+            <div style={{ fontSize: 22 }}>Live preview</div>
+            <div style={{ margin: '4px 0 16px', fontSize: 13, color: '#9c9c9c' }}>The real site with your current content. It refreshes when you save a page. Switch device to check mobile.</div>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 16, alignItems: 'center' }}>
+              <span className="aghost" style={{ padding: '6px 14px', fontSize: 13, borderColor: device === 'desktop' ? '#474747' : '#2a2a2a', color: device === 'desktop' ? '#f3f3f3' : '#9c9c9c' }} onClick={() => setDevice('desktop')}>Desktop</span>
+              <span className="aghost" style={{ padding: '6px 14px', fontSize: 13, borderColor: device === 'mobile' ? '#474747' : '#2a2a2a', color: device === 'mobile' ? '#f3f3f3' : '#9c9c9c' }} onClick={() => setDevice('mobile')}>Mobile</span>
+              <a href="/?preview=1" target="_blank" className="aghost" style={{ padding: '6px 14px', fontSize: 13, textDecoration: 'none', marginLeft: 'auto' }}>Open in tab ↗</a>
+            </div>
+            {(() => {
+              const pv = device === 'mobile' ? { w: 390, h: 780, s: 0.9 } : { w: 1280, h: 800, s: 0.62 };
+              return (
+                <div style={{ width: pv.w * pv.s, height: pv.h * pv.s, maxWidth: '100%', overflow: 'hidden', borderRadius: 14, border: '1px solid #212121', margin: '0 auto', boxShadow: '0 24px 70px rgba(0,0,0,.45)' }}>
+                  <iframe title="preview" src="/?preview=1" style={{ width: pv.w, height: pv.h, border: 0, transform: `scale(${pv.s})`, transformOrigin: 'top left', background: '#101010' }} />
+                </div>
+              );
+            })()}
+            <div style={{ marginTop: 28, borderTop: '1px solid #212121', paddingTop: 20, display: 'flex', gap: 10, alignItems: 'center', maxWidth: 640 }}>
+              <span style={{ fontSize: 13, color: '#9c9c9c', marginRight: 'auto' }}>Whole site backup</span>
+              <span className="aghost" style={{ padding: '6px 14px', fontSize: 13 }} onClick={() => downloadJson('aimwork-site.json', data)}>Export all</span>
+              <span className="aghost" style={{ padding: '6px 14px', fontSize: 13 }} onClick={() => pickImport('all' as Sec)}>Import all</span>
+            </div>
+          </>}
         </div>
       </div>
+
+      {/* hidden input for json import */}
+      <input ref={importRef} type="file" accept="application/json,.json" onChange={onImportFile} style={{ display: 'none' }} />
 
       {/* save error: stays until the next save */}
       {!!err && (
