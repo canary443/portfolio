@@ -362,7 +362,11 @@ export default function Page() {
         </div>
         {config.showMap && (
           <div className="in3" style={{ overflow: 'hidden', marginTop: 8 }}>
-            <img ref={handsRef} src="/assets/hero-hands.avif" alt="" fetchPriority="high" width={3217} height={935} className="hero-hands" style={{ display: 'block', transform: 'scale(1.06)', willChange: reduced.current ? 'auto' : 'transform' }} />
+            {/* avif for modern browsers, png fallback for older ipads that cannot decode avif */}
+            <picture style={{ display: 'contents' }}>
+              <source srcSet="/assets/hero-hands.avif" type="image/avif" />
+              <img ref={handsRef} src="/assets/hero-hands.png" alt="" fetchPriority="high" width={3217} height={935} className="hero-hands" style={{ display: 'block', transform: 'scale(1.06)', willChange: reduced.current ? 'auto' : 'transform' }} />
+            </picture>
           </div>
         )}
       </div>
