@@ -17,8 +17,10 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
+        {/* set the theme before paint so there is no flash. admin stays dark. */}
+        <script dangerouslySetInnerHTML={{ __html: "try{var p=location.pathname,t=localStorage.getItem('zx_theme');document.documentElement.dataset.theme=p.indexOf('/admin')===0?'dark':(t==='light'||t==='dark'?t:'dark')}catch(e){document.documentElement.dataset.theme='dark'}" }} />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500&display=swap" rel="stylesheet" />
