@@ -327,17 +327,17 @@ export default function Page() {
     <div className="site-page" data-custom-cursor={customCursor ? 'true' : undefined} style={{ minHeight: '100vh', overflowX: 'clip' }}>
       {/* nav */}
       <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100, display: 'flex', justifyContent: 'center', padding: sc ? '12px 16px 0' : '0px', transition: 'padding .6s ' + EASE, pointerEvents: 'none' }}>
-        <div className="nav-pill" style={{
-          pointerEvents: 'auto', display: 'flex', alignItems: 'center', width: '100%',
-          maxWidth: sc ? 790 : 1256, height: sc ? 52 : 64,
+        <div style={{
+          pointerEvents: 'auto', display: 'flex', alignItems: 'center', gap: 22, width: '100%',
+          maxWidth: sc ? 790 : 1256, height: sc ? 52 : 64, padding: '0 24px',
           border: '1px solid ' + (sc ? 'rgba(255,255,255,.12)' : 'rgba(255,255,255,0)'),
           borderRadius: sc ? 9999 : 0, background: sc ? 'rgba(22,22,22,.6)' : 'rgba(10,10,10,.5)',
           backdropFilter: navBlur, WebkitBackdropFilter: navBlur,
           boxShadow: sc ? '0 16px 48px rgba(0,0,0,.5)' : 'none',
           transition: `max-width .6s ${EASE}, height .6s ${EASE}, border-radius .6s ${EASE}, background .45s ease, border-color .45s ease, box-shadow .45s ease`
         }}>
-          <div onClick={goTop} className="nav-brand" style={{ fontSize: 16, letterSpacing: '-0.01em', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}>AimworkSpace</div>
-          <div className="nav-links">
+          <div onClick={goTop} style={{ fontSize: 16, letterSpacing: '-0.01em', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}>AimworkSpace</div>
+          <div style={{ display: 'flex', gap: 22, fontSize: 14, marginLeft: 'auto', marginRight: 'auto' }}>
             <a href="#services" className="navlnk">{t.navS}</a>
             <a href="#projects" className="navlnk">{t.navP}</a>
             <a href="#contact" className="navlnk">{t.navC}</a>
@@ -362,11 +362,7 @@ export default function Page() {
         </div>
         {config.showMap && (
           <div className="in3" style={{ overflow: 'hidden', marginTop: 8 }}>
-            {/* avif for modern browsers, png fallback for older ipads that cannot decode avif */}
-            <picture style={{ display: 'contents' }}>
-              <source srcSet="/assets/hero-hands.avif" type="image/avif" />
-              <img ref={handsRef} src="/assets/hero-hands.png" alt="" fetchPriority="high" width={3217} height={935} className="hero-hands" style={{ display: 'block', transform: 'scale(1.06)', willChange: reduced.current ? 'auto' : 'transform' }} />
-            </picture>
+            <img ref={handsRef} src="/assets/hero-hands.avif" alt="" fetchPriority="high" style={{ width: '114%', marginLeft: '-7%', display: 'block', transform: 'scale(1.06)', willChange: reduced.current ? 'auto' : 'transform' }} />
           </div>
         )}
       </div>
