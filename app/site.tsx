@@ -653,16 +653,26 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
           <div style={{ maxWidth: 620, margin: '0 auto', padding: '120px 28px 0', textAlign: 'center' }}>
             <div style={{ fontSize: 23, ...rf('aboutH') }}>{t.aboutH}</div>
             <div style={{ marginTop: 16, fontSize: 16, lineHeight: 1.65, color: 'var(--muted)' }}>{renderAbout(aboutText)}</div>
-            <div style={{ marginTop: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, flexWrap: 'wrap' }}>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 9, color: 'var(--muted)', fontSize: 14, ...rf('based') }}>
-                <span style={{ display: 'inline-block', width: 21, height: 15, borderRadius: 2, overflow: 'hidden', border: '1px solid var(--line-2)' }}>
-                  <span style={{ display: 'block', height: 5, background: '#000' }} />
-                  <span style={{ display: 'block', height: 5, background: '#dd0000' }} />
-                  <span style={{ display: 'block', height: 5, background: '#ffcc00' }} />
+            {/* gif/photo under the text, framed like the card media */}
+            {!!data.aboutImg && (
+              <div style={{ marginTop: 26, display: 'flex', justifyContent: 'center' }}>
+                <img src={data.aboutImg} alt="" loading="lazy" style={{ width: 'min(252px, 70vw)', aspectRatio: '16/9', objectFit: 'cover', display: 'block', borderRadius: 14, border: '1px solid var(--line)' }} />
+              </div>
+            )}
+            {data.aboutShowBased !== false && (
+              <div style={{ marginTop: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, flexWrap: 'wrap' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 9, color: 'var(--muted)', fontSize: 14, ...rf('based') }}>
+                  {data.aboutShowFlag !== false && (
+                    <span style={{ display: 'inline-block', width: 21, height: 15, borderRadius: 2, overflow: 'hidden', border: '1px solid var(--line-2)' }}>
+                      <span style={{ display: 'block', height: 5, background: '#000' }} />
+                      <span style={{ display: 'block', height: 5, background: '#dd0000' }} />
+                      <span style={{ display: 'block', height: 5, background: '#ffcc00' }} />
+                    </span>
+                  )}
+                  {t.based}
                 </span>
-                {t.based}
-              </span>
-            </div>
+              </div>
+            )}
           </div>
         )}
 

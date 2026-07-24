@@ -49,6 +49,10 @@ export const HERO_PRESETS: { id: string; label: string; color: string }[] = [
 ];
 export interface SiteData {
   about: string; aboutRu?: string;
+  // about media: gif/photo in a 16:9 frame under the about text
+  aboutImg?: string | null;
+  // the location line under the about text, and its little flag
+  aboutShowBased?: boolean; aboutShowFlag?: boolean;
   telegram: string; github: string; email: string;
   services: Service[]; works: Work[]; projects: TeamProject[]; faq: FaqItem[];
   // effects (flat fields so old saved data backfills from defaults)
@@ -65,6 +69,9 @@ export interface SiteData {
 export const DEFAULTS: SiteData = {
   about: "AimworkSpace is a one-person studio. Full stack: front, back, bots, deploys.\nWorking remote since 2023. If it can be automated, it will be automated.\nPayment in USDT or RUB. Turnaround: 3-14 days depending on scope.\nResponse time under 24 hours.",
   aboutRu: "AimworkSpace - студия одного человека. Фулстек: фронт, бэк, боты, деплой.\nРаботаю удалённо с 2023. Всё, что можно автоматизировать, будет автоматизировано.\nОплата в USDT или рублях. Сроки: 3-14 дней в зависимости от объёма.\nОтвечаю быстрее чем за 24 часа.",
+  aboutImg: '/assets/rigrig.jpg',
+  aboutShowBased: true,
+  aboutShowFlag: true,
   telegram: 'sickbuddy',
   github: 'canary443',
   email: 'contact@leet-cheats.xyz',

@@ -50,7 +50,7 @@ const NAV: [Sec, string][] = [
 
 // which SiteData keys each page owns, for json export / import
 const SECTION_KEYS: Partial<Record<Sec, (keyof SiteData)[]>> = {
-  about: ['about', 'aboutRu'],
+  about: ['about', 'aboutRu', 'aboutImg', 'aboutShowBased', 'aboutShowFlag'],
   services: ['services'],
   works: ['works'],
   projects: ['projects'],
@@ -85,6 +85,7 @@ export default function Admin() {
   const busy = useRef(false);
   const importRef = useRef<HTMLInputElement>(null);
   const importSec = useRef<Sec>('about');
+  const aboutImgRef = useRef<HTMLInputElement>(null);
 
   // defined before the effects so they can call it
   const show = (msg: string) => {
@@ -151,6 +152,16 @@ export default function Admin() {
     saveData(nd); // best effort, a full cache is fine
     show(msg);
     return true;
+  };
+  // about media: gifs keep their animation (no canvas), photos get shrunk
+  const onAboutMedia = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    e.target.value = '';
+    if (!f) return;
+    const dataUrl = await shrinkImage(f, 1280, 'image/jpeg', 700);
+    if (dataUrlKb(dataUrl) > 4200) { setErr('not saved: file is over ~4mb, compress the gif first'); return; }
+    const url = await uploadMedia(dataUrl);
+    persist({ ...data, aboutImg: url });
   };
   const F = (k: string) => form[k] || '';
   const onF = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
@@ -456,6 +467,35 @@ export default function Admin() {
             <div style={{ margin: '18px 0 8px', fontSize: 13, color: '#9c9c9c' }}>Russian version (shown when RU is selected):</div>
             <textarea className="ainput" value={F('aboutRu')} onChange={onF('aboutRu')} rows={8} style={{ width: '100%', maxWidth: 640, lineHeight: 1.6, borderRadius: 10, padding: '12px 14px' }} />
             <div style={{ marginTop: 16 }}><span className="abtn" onClick={() => persist({ ...data, about: F('about'), aboutRu: F('aboutRu') })}>Save</span></div>
+
+            {/* about media: framed gif/photo under the text, saved on upload */}
+            <div style={{ marginTop: 28, borderTop: '1px solid #212121', paddingTop: 20, maxWidth: 640 }}>
+              <div style={{ fontSize: 16 }}>About media</div>
+              <div style={{ margin: '4px 0 14px', fontSize: 13, color: '#9c9c9c', lineHeight: 1.6 }}>Optional gif or photo shown in a 16:9 frame under the about text. Saved right after upload.</div>
+              <input ref={aboutImgRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={onAboutMedia} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
+                {data.aboutImg
+                  ? <img src={data.aboutImg} alt="" style={{ width: 214, aspectRatio: '16/9', objectFit: 'cover', borderRadius: 10, border: '1px solid #212121', display: 'block' }} />
+                  : <div style={{ width: 214, aspectRatio: '16/9', borderRadius: 10, border: '1px dashed #2a2a2a', display: 'grid', placeItems: 'center', color: '#474747', fontSize: 12 }}>empty</div>}
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                  <span className="aghost" style={{ padding: '5px 12px', fontSize: 12 }} onClick={() => aboutImgRef.current?.click()}>Upload</span>
+                  {!!data.aboutImg && <span className="adel" onClick={() => persist({ ...data, aboutImg: null })}>remove</span>}
+                </div>
+              </div>
+
+              {/* the location line and its flag can be hidden */}
+              <div style={{ marginTop: 18, borderTop: '1px solid #1a1a1a' }}>
+                {([['aboutShowBased', 'Location line (based in ...)'], ['aboutShowFlag', 'Flag on the location line']] as const).map(([key, label]) => {
+                  const on = data[key] !== false;
+                  return (
+                    <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: '1px solid #1a1a1a' }}>
+                      <span style={{ fontSize: 14, flex: 1 }}>{label}</span>
+                      <span className="aghost" style={{ padding: '6px 18px', fontSize: 13, borderColor: on ? '#474747' : '#2a2a2a', color: on ? '#f3f3f3' : '#9c9c9c' }} onClick={() => persist({ ...data, [key]: !on })}>{on ? 'On' : 'Off'}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </>}
 
           {/* services */}

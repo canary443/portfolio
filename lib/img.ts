@@ -41,7 +41,8 @@ export async function shrinkImage(
   type: 'image/jpeg' | 'image/png' = 'image/jpeg',
   maxKb = 450
 ): Promise<string> {
-  if (file.type === 'image/svg+xml') return readAsDataUrl(file);
+  // svg dies on a canvas, gif loses its animation - keep both as they are
+  if (file.type === 'image/svg+xml' || file.type === 'image/gif') return readAsDataUrl(file);
 
   const im = await load(file);
   const steps: [number, number][] = type === 'image/png'
