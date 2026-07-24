@@ -60,7 +60,7 @@ const SECTION_KEYS: Partial<Record<Sec, (keyof SiteData)[]>> = {
   works: ['works'],
   projects: ['projects'],
   faq: ['faq'],
-  settings: ['telegram', 'github', 'email', 'heroBg', 'heroArt', 'heroArtCustom', 'heroPreset', 'cursorStyle', 'fxGradualBlur', 'fxHeadlineReveal', 'fxCardTilt', 'fontRu'],
+  settings: ['telegram', 'github', 'email', 'heroBg', 'heroArt', 'heroArtCustom', 'heroArtScale', 'heroPreset', 'cursorStyle', 'fxGradualBlur', 'fxHeadlineReveal', 'fxCardTilt', 'fontRu'],
   i18n: ['i18n', 'i18nFontRu']
 };
 
@@ -85,6 +85,8 @@ export default function Admin() {
   const [device, setDevice] = useState<'desktop' | 'mobile'>('desktop');
   // live slider value for the about image width; saved when the drag ends
   const [aboutW, setAboutW] = useState<number | null>(null);
+  // same for the hero art scale
+  const [heroScale, setHeroScale] = useState<number | null>(null);
 
   const flashT = useRef<ReturnType<typeof setTimeout>>(undefined);
   const aboutRef = useRef<HTMLTextAreaElement>(null);
@@ -191,6 +193,10 @@ export default function Admin() {
   const commitAboutW = async () => {
     if (aboutW === null || aboutW === (data.aboutImgW || 252)) { setAboutW(null); return; }
     if (await persist({ ...data, aboutImgW: aboutW })) setAboutW(null);
+  };
+  const commitHeroScale = async () => {
+    if (heroScale === null || heroScale === (data.heroArtScale || 100)) { setHeroScale(null); return; }
+    if (await persist({ ...data, heroArtScale: heroScale })) setHeroScale(null);
   };
   const F = (k: string) => form[k] || '';
   const onF = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
@@ -780,6 +786,15 @@ export default function Admin() {
                     </>}
                   </div>
                   <div style={{ marginTop: 6, fontSize: 12, color: '#474747' }}>custom: any picture you upload turns into the same ascii style by itself</div>
+                  {/* size multiplier for the picked art; saves when the slider is released */}
+                  <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <span style={{ fontSize: 13, width: 60, color: '#9c9c9c' }}>Scale</span>
+                    <input type="range" min={50} max={150} step={2} value={heroScale ?? data.heroArtScale ?? 100}
+                      onChange={e => setHeroScale(Number(e.target.value))}
+                      onPointerUp={commitHeroScale} onKeyUp={commitHeroScale} onBlur={commitHeroScale}
+                      style={{ width: 220, accentColor: '#f3f3f3' }} />
+                    <span style={{ fontSize: 13, color: '#9c9c9c', width: 52 }}>{heroScale ?? data.heroArtScale ?? 100}%</span>
+                  </div>
                   {!!data.heroArtCustom && (
                     <img src={data.heroArtCustom} alt="" style={{ marginTop: 10, width: 190, borderRadius: 8, border: '1px solid #212121', display: 'block', background: '#000' }} />
                   )}

@@ -63,6 +63,8 @@ export interface SiteData {
   // effects (flat fields so old saved data backfills from defaults)
   heroBg?: HeroBg; heroPreset?: string; cursorStyle?: CursorStyle;
   heroArt?: HeroArt; heroArtCustom?: string | null;
+  // percent multiplier on the art's base width, 100 = as designed
+  heroArtScale?: number;
   fxGradualBlur?: boolean; fxHeadlineReveal?: boolean;
   fxCardTilt?: boolean;
   fontRu?: RuFont;
@@ -86,6 +88,7 @@ export const DEFAULTS: SiteData = {
   heroBg: 'image',
   heroArt: 'cat',
   heroArtCustom: null,
+  heroArtScale: 100,
   heroPreset: 'mono',
   cursorStyle: 'dot',
   fxGradualBlur: true,

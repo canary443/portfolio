@@ -517,11 +517,20 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
             {(() => {
               const kind = data.heroArt === 'custom' && !data.heroArtCustom ? 'cat' : (data.heroArt || 'cat');
               const art = kind === 'custom'
-                ? { src: data.heroArtCustom!, fb: data.heroArtCustom!, style: { maxWidth: '86%', maxHeight: '58vh', margin: '0 auto' } }
+                ? { src: data.heroArtCustom!, fb: data.heroArtCustom! }
                 : kind === 'hands'
-                  ? { src: '/assets/hero-hands.avif', fb: '/assets/hero-hands.png', style: { width: '114%', marginLeft: '-7%' } }
-                  : { src: '/assets/kitokat-ascii-fine.avif', fb: '/assets/kitokat-ascii-fine.png', style: { width: '80%', margin: '0 auto' } };
-              return <img key={art.src} ref={handsRef} src={art.src} alt="" fetchPriority="high" onError={e => { const im = e.currentTarget; if (!im.dataset.fb && art.fb !== art.src) { im.dataset.fb = '1'; im.src = art.fb; } }} style={{ ...art.style, display: 'block', transform: 'scale(1.06)', willChange: reduced.current ? 'auto' : 'transform' }} />;
+                  ? { src: '/assets/hero-hands.avif', fb: '/assets/hero-hands.png' }
+                  : { src: '/assets/kitokat-ascii-fine.avif', fb: '/assets/kitokat-ascii-fine.png' };
+              // admin scale on top of each art's base width; wider than the
+              // viewport bleeds evenly to both sides (overflow is hidden)
+              const sc = Math.max(40, Math.min(160, data.heroArtScale || 100)) / 100;
+              const w = (kind === 'hands' ? 114 : kind === 'custom' ? 86 : 80) * sc;
+              const style: React.CSSProperties = kind === 'custom'
+                ? { maxWidth: Math.min(w, 100) + '%', maxHeight: Math.round(58 * sc) + 'vh', margin: '0 auto' }
+                : w > 100
+                  ? { width: w + '%', marginLeft: (-(w - 100) / 2) + '%' }
+                  : { width: w + '%', margin: '0 auto' };
+              return <img key={art.src} ref={handsRef} src={art.src} alt="" fetchPriority="high" onError={e => { const im = e.currentTarget; if (!im.dataset.fb && art.fb !== art.src) { im.dataset.fb = '1'; im.src = art.fb; } }} style={{ ...style, display: 'block', transform: 'scale(1.06)', willChange: reduced.current ? 'auto' : 'transform' }} />;
             })()}
           </div>
         ) : (
