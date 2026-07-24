@@ -32,6 +32,8 @@ const FX_TOGGLES: [FxKey, string, boolean][] = [
   ['fxHeadlineReveal', 'Hero headline reveal', true],
   ['fxCardTilt', 'Project card tilt', false]
 ];
+// aspect choices for the about media; auto keeps the natural ratio
+const ABOUT_ASPECTS: [string, string][] = [['16/9', '16:9'], ['4/3', '4:3'], ['1/1', '1:1'], ['3/4', '3:4'], ['auto', 'Auto']];
 // cyrillic font options; the stack matches the one the site applies for ru
 const RU_FONT_OPTS: [RuFont, string, string][] = [
   ['onest', 'Onest', "'Onest', sans-serif"],
@@ -50,7 +52,7 @@ const NAV: [Sec, string][] = [
 
 // which SiteData keys each page owns, for json export / import
 const SECTION_KEYS: Partial<Record<Sec, (keyof SiteData)[]>> = {
-  about: ['about', 'aboutRu', 'aboutImg', 'aboutShowBased', 'aboutShowFlag'],
+  about: ['about', 'aboutRu', 'aboutImg', 'aboutImgW', 'aboutImgAspect', 'aboutShowBased', 'aboutShowFlag'],
   services: ['services'],
   works: ['works'],
   projects: ['projects'],
@@ -78,6 +80,8 @@ export default function Admin() {
   const [saving, setSaving] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
   const [device, setDevice] = useState<'desktop' | 'mobile'>('desktop');
+  // live slider value for the about image width; saved when the drag ends
+  const [aboutW, setAboutW] = useState<number | null>(null);
 
   const flashT = useRef<ReturnType<typeof setTimeout>>(undefined);
   const aboutRef = useRef<HTMLTextAreaElement>(null);
@@ -162,6 +166,11 @@ export default function Admin() {
     if (dataUrlKb(dataUrl) > 4200) { setErr('not saved: file is over ~4mb, compress the gif first'); return; }
     const url = await uploadMedia(dataUrl);
     persist({ ...data, aboutImg: url });
+  };
+  // save the slider width once the user lets go of it
+  const commitAboutW = async () => {
+    if (aboutW === null || aboutW === (data.aboutImgW || 252)) { setAboutW(null); return; }
+    if (await persist({ ...data, aboutImgW: aboutW })) setAboutW(null);
   };
   const F = (k: string) => form[k] || '';
   const onF = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
@@ -471,17 +480,41 @@ export default function Admin() {
             {/* about media: framed gif/photo under the text, saved on upload */}
             <div style={{ marginTop: 28, borderTop: '1px solid #212121', paddingTop: 20, maxWidth: 640 }}>
               <div style={{ fontSize: 16 }}>About media</div>
-              <div style={{ margin: '4px 0 14px', fontSize: 13, color: '#9c9c9c', lineHeight: 1.6 }}>Optional gif or photo shown in a 16:9 frame under the about text. Saved right after upload.</div>
+              <div style={{ margin: '4px 0 14px', fontSize: 13, color: '#9c9c9c', lineHeight: 1.6 }}>Optional gif or photo under the about text. The preview below is the real size and shape the site uses. Saved right after upload / on click; the width saves when you let the slider go.</div>
               <input ref={aboutImgRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={onAboutMedia} />
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
-                {data.aboutImg
-                  ? <img src={data.aboutImg} alt="" style={{ width: 214, aspectRatio: '16/9', objectFit: 'cover', borderRadius: 10, border: '1px solid #212121', display: 'block' }} />
-                  : <div style={{ width: 214, aspectRatio: '16/9', borderRadius: 10, border: '1px dashed #2a2a2a', display: 'grid', placeItems: 'center', color: '#474747', fontSize: 12 }}>empty</div>}
-                <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                  <span className="aghost" style={{ padding: '5px 12px', fontSize: 12 }} onClick={() => aboutImgRef.current?.click()}>Upload</span>
-                  {!!data.aboutImg && <span className="adel" onClick={() => persist({ ...data, aboutImg: null })}>remove</span>}
-                </div>
-              </div>
+              {(() => {
+                const w = aboutW ?? data.aboutImgW ?? 252;
+                const asp = data.aboutImgAspect || '16/9';
+                const frame: React.CSSProperties = { width: w, maxWidth: '100%', aspectRatio: asp === 'auto' ? undefined : asp, borderRadius: 14, border: '1px solid #212121', display: 'block' };
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'flex-start' }}>
+                    {data.aboutImg
+                      ? <img src={data.aboutImg} alt="" style={{ ...frame, objectFit: asp === 'auto' ? undefined : 'cover' }} />
+                      : <div style={{ ...frame, aspectRatio: asp === 'auto' ? '16/9' : asp, border: '1px dashed #2a2a2a', display: 'grid', placeItems: 'center', color: '#474747', fontSize: 12 }}>empty</div>}
+                    <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                      <span className="aghost" style={{ padding: '5px 12px', fontSize: 12 }} onClick={() => aboutImgRef.current?.click()}>Upload</span>
+                      {!!data.aboutImg && <span className="adel" onClick={() => persist({ ...data, aboutImg: null })}>remove</span>}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <span style={{ fontSize: 13, width: 60, color: '#9c9c9c' }}>Width</span>
+                      <input type="range" min={160} max={520} step={4} value={w}
+                        onChange={e => setAboutW(Number(e.target.value))}
+                        onPointerUp={commitAboutW} onKeyUp={commitAboutW} onBlur={commitAboutW}
+                        style={{ width: 220, accentColor: '#f3f3f3' }} />
+                      <span style={{ fontSize: 13, color: '#9c9c9c', width: 52 }}>{w}px</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <span style={{ fontSize: 13, width: 60, color: '#9c9c9c' }}>Aspect</span>
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                        {ABOUT_ASPECTS.map(([val, label]) => {
+                          const active = asp === val;
+                          return <span key={val} className="aghost" style={{ padding: '5px 12px', fontSize: 12, borderColor: active ? '#474747' : '#2a2a2a', color: active ? '#f3f3f3' : '#9c9c9c' }} onClick={() => persist({ ...data, aboutImgAspect: val })}>{label}</span>;
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* the location line and its flag can be hidden */}
               <div style={{ marginTop: 18, borderTop: '1px solid #1a1a1a' }}>

@@ -653,10 +653,16 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
           <div style={{ maxWidth: 620, margin: '0 auto', padding: '120px 28px 0', textAlign: 'center' }}>
             <div style={{ fontSize: 23, ...rf('aboutH') }}>{t.aboutH}</div>
             <div style={{ marginTop: 16, fontSize: 16, lineHeight: 1.65, color: 'var(--muted)' }}>{renderAbout(aboutText)}</div>
-            {/* gif/photo under the text, framed like the card media */}
+            {/* gif/photo under the text, framed like the card media. size and
+                aspect come from the admin; 'auto' keeps the natural ratio */}
             {!!data.aboutImg && (
               <div style={{ marginTop: 26, display: 'flex', justifyContent: 'center' }}>
-                <img src={data.aboutImg} alt="" loading="lazy" style={{ width: 'min(252px, 70vw)', aspectRatio: '16/9', objectFit: 'cover', display: 'block', borderRadius: 14, border: '1px solid var(--line)' }} />
+                <img src={data.aboutImg} alt="" loading="lazy" style={{
+                  width: `min(${data.aboutImgW || 252}px, 78vw)`,
+                  aspectRatio: (data.aboutImgAspect || '16/9') === 'auto' ? undefined : (data.aboutImgAspect || '16/9'),
+                  objectFit: (data.aboutImgAspect || '16/9') === 'auto' ? undefined : 'cover',
+                  display: 'block', borderRadius: 14, border: '1px solid var(--line)'
+                }} />
               </div>
             )}
             {data.aboutShowBased !== false && (
