@@ -80,7 +80,6 @@ export default function Site({ initial }: { initial: SiteData }) {
   const [fineOk, setFineOk] = useState(false);
   const [webglOk, setWebglOk] = useState(false);
   const [fxResolved, setFxResolved] = useState(false); // capability check has run
-  const [intro, setIntro] = useState(true); // short load cover to hide the first paint
 
   const cursorRef = useRef<HTMLDivElement>(null);
   const handsRef = useRef<HTMLImageElement>(null);
@@ -129,12 +128,6 @@ export default function Site({ initial }: { initial: SiteData }) {
     setFineOk(fine.current && !reduced.current);
     setWebglOk(webglSupported());
     setFxResolved(true);
-  }, []);
-
-  // fade the load cover out after the first paint (hides the hero swap flicker)
-  useEffect(() => {
-    const t = setTimeout(() => setIntro(false), 280);
-    return () => clearTimeout(t);
   }, []);
 
   // close the language menu on an outside click
@@ -785,9 +778,6 @@ export default function Site({ initial }: { initial: SiteData }) {
 
       {/* cinematic gradual blur at the bottom edge of the viewport */}
       {gradualOn && <GradualBlur target="page" position="bottom" height="2rem" strength={0.7} divCount={4} curve="bezier" />}
-
-      {/* short load cover: fades out to hide the first paint and hero swap flicker */}
-      <div aria-hidden style={{ position: 'fixed', inset: 0, zIndex: 99999, background: 'var(--bg)', opacity: intro ? 1 : 0, transition: 'opacity .38s ease', pointerEvents: 'none' }} />
     </div>
   );
 }
