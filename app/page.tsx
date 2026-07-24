@@ -327,17 +327,17 @@ export default function Page() {
     <div className="site-page" data-custom-cursor={customCursor ? 'true' : undefined} style={{ minHeight: '100vh', overflowX: 'clip' }}>
       {/* nav */}
       <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100, display: 'flex', justifyContent: 'center', padding: sc ? '12px 16px 0' : '0px', transition: 'padding .6s ' + EASE, pointerEvents: 'none' }}>
-        <div style={{
-          pointerEvents: 'auto', display: 'flex', alignItems: 'center', gap: 22, width: '100%',
-          maxWidth: sc ? 790 : 1256, height: sc ? 52 : 64, padding: '0 24px',
+        <div className="nav-pill" style={{
+          pointerEvents: 'auto', display: 'flex', alignItems: 'center', width: '100%',
+          maxWidth: sc ? 790 : 1256, height: sc ? 52 : 64,
           border: '1px solid ' + (sc ? 'rgba(255,255,255,.12)' : 'rgba(255,255,255,0)'),
           borderRadius: sc ? 9999 : 0, background: sc ? 'rgba(22,22,22,.6)' : 'rgba(10,10,10,.5)',
           backdropFilter: navBlur, WebkitBackdropFilter: navBlur,
           boxShadow: sc ? '0 16px 48px rgba(0,0,0,.5)' : 'none',
           transition: `max-width .6s ${EASE}, height .6s ${EASE}, border-radius .6s ${EASE}, background .45s ease, border-color .45s ease, box-shadow .45s ease`
         }}>
-          <div onClick={goTop} style={{ fontSize: 16, letterSpacing: '-0.01em', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}>AimworkSpace</div>
-          <div style={{ display: 'flex', gap: 22, fontSize: 14, marginLeft: 'auto', marginRight: 'auto' }}>
+          <div onClick={goTop} className="nav-brand" style={{ fontSize: 16, letterSpacing: '-0.01em', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}>AimworkSpace</div>
+          <div className="nav-links">
             <a href="#services" className="navlnk">{t.navS}</a>
             <a href="#projects" className="navlnk">{t.navP}</a>
             <a href="#contact" className="navlnk">{t.navC}</a>

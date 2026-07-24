@@ -47,6 +47,16 @@ a:hover { color: #ffffff; }
   .site-page[data-custom-cursor="true"] * { cursor: none !important; }
 }
 
+/* nav pill layout (spacing lives here so it can shrink on phones) */
+.nav-pill { gap: 22px; padding: 0 24px; }
+.nav-links { display: flex; gap: 22px; font-size: 14px; margin: 0 auto; }
+/* phones and small tablets: drop the section links, keep brand + lang + chat */
+@media (max-width: 768px) {
+  .nav-pill { gap: 12px; padding: 0 16px; }
+  .nav-links { display: none; }
+  .nav-brand { margin-right: auto; }
+}
+
 /* hover states (inline styles cannot do :hover) */
 .navlnk { color: #9c9c9c; text-decoration: none; transition: color .15s ease; }
 .navlnk:hover { color: #f3f3f3; }
