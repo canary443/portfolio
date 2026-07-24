@@ -84,7 +84,7 @@ a:hover { color: var(--text-strong); }
 .svc { padding: 40px 44px; background: var(--bg); position: relative; transition: background .25s ease, opacity .6s var(--ease), transform .6s var(--ease); }
 .svc:hover { background: var(--hover); }
 /* reveal opacity slides over .5s (set inline); hover/press transform is quick and composed */
-.card { position: relative; cursor: pointer; text-decoration: none; color: var(--text); display: block; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--card); transition: border-color .2s ease, transform .34s var(--ease), opacity .4s var(--ease); }
+.card { position: relative; cursor: pointer; text-decoration: none; color: var(--text); display: block; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--card); transition: border-color .2s ease, transform .34s var(--ease); }
 .card:hover { border-color: var(--faint); transform: translateY(-3px); }
 .card:hover:active { transform: translateY(-3px) scale(.99); }
 .card:active { transform: scale(.99); }
@@ -146,7 +146,7 @@ a:hover { color: var(--text-strong); }
   .in0, .in1, .in2, .in3 { animation-name: zxfade; animation-duration: .4s; }
   .marq { animation: none; }
   .imgfade { animation: none; }
-  .card { transition: border-color .2s ease, opacity .3s ease; }
+  .card { transition: border-color .2s ease; }
   .svc { transition: background .25s ease, opacity .3s ease; }
   .partner, .pill, .ghost { transition-property: opacity, background, border-color, color; }
 }

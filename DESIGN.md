@@ -32,7 +32,7 @@ Design reference for AimworkSpace. Based on the "Hyperstudio" style direction: e
 - Easing: `cubic-bezier(.22,1,.36,1)` (the `--ease` CSS var), durations .15–.7s. Exits are faster than entries (modal: in .45s, out .18s).
 - Page load: staggered `zxin` rise on hero via `.in0–.in3` classes (0 / .08s / .16s / .22s).
 - Scroll: lenis smooth scroll (`lerp: .09`, fine pointers with full motion only); hero pinned (`position:sticky`) while content slides over it as a rounded "sheet" (curtain effect), hero text scales to .95 and fades as it is covered; hands image gets slow parallax, size stays constant.
-- Reveal on scroll (IntersectionObserver, `data-reveal`): project cards slide in from alternating sides (±36px), service cells rise 18px with a 60ms column stagger.
+- Reveal on scroll (IntersectionObserver, `data-reveal`): project cards rise 26px with a fade + 6px blur on a spring (`Reveal` primitive, motion), service cells rise 18px via CSS. Cards that enter the viewport in the same observer batch stagger left to right (65ms per card, capped at 260ms), so a row cascades at any column count.
 - Buttons: magnetic pull toward the cursor (transform composed in JS) + `scale(.97)` press feedback on pointer-down (CSS `:active` covers touch).
 - Modal: enters with `zxmodal` scale/fade, exits in 180ms (fade + 8px drop) before unmount; scroll is frozen underneath (lenis stop + body overflow).
 - Cursor: 9px dot, `mix-blend-mode:difference`, lerp .16, scales 2.6× over interactive elements, fades out when the pointer leaves the window; the rAF loop sleeps when settled. Native cursor hidden on fine pointers with full motion only.

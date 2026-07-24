@@ -16,6 +16,7 @@ import HeroFx from '@/components/fx/HeroFx';
 import PixelTrailCursor from '@/components/fx/PixelTrailCursor';
 import TargetCursorFx from '@/components/fx/TargetCursorFx';
 import HeadlineReveal from '@/components/fx/HeadlineReveal';
+import { Reveal } from '@/components/animate-ui/primitives/effects/reveal';
 import GradualBlur from '@/components/GradualBlur';
 import LogoLoop from '@/components/LogoLoop';
 
@@ -62,7 +63,8 @@ export default function Site({ initial }: { initial: SiteData }) {
   const [data, setData] = useState<SiteData>(initial);
   const [lang, setLangState] = useState<Lang>('en');
   const [scrolled, setScrolled] = useState(false);
-  const [revealed, setRevealed] = useState<Record<string, boolean>>({});
+  // id -> stagger delay in ms, assigned by batch position when it enters
+  const [revealed, setRevealed] = useState<Record<string, number>>({});
   const [revealAll, setRevealAll] = useState(false);
   const [modal, setModal] = useState<Item | null>(null);
   const [pic, setPic] = useState(0);
@@ -254,17 +256,17 @@ export default function Site({ initial }: { initial: SiteData }) {
   useEffect(() => {
     if (reduced.current || !('IntersectionObserver' in window)) { setRevealAll(true); return; }
     const io = new IntersectionObserver(es => {
-      es.forEach(en => {
-        if (en.isIntersecting) {
-          const id = en.target.getAttribute('data-reveal')!;
-          setRevealed(r => (r[id] ? r : { ...r, [id]: true }));
-          io.unobserve(en.target);
-        }
+      // cards that enter together (one row) cascade left to right
+      es.filter(en => en.isIntersecting).forEach((en, bi) => {
+        const id = en.target.getAttribute('data-reveal')!;
+        const d = Math.min(bi * 65, 260);
+        setRevealed(r => (r[id] !== undefined ? r : { ...r, [id]: d }));
+        io.unobserve(en.target);
       });
     }, { threshold: .12, rootMargin: '0px 0px -5% 0px' });
     const t = setTimeout(() => {
       document.querySelectorAll('[data-reveal]').forEach(c => {
-        if (!revealed[c.getAttribute('data-reveal')!]) io.observe(c);
+        if (revealed[c.getAttribute('data-reveal')!] === undefined) io.observe(c);
       });
     }, 60);
     return () => { clearTimeout(t); io.disconnect(); };
@@ -502,14 +504,15 @@ export default function Site({ initial }: { initial: SiteData }) {
           </div>
           <h2 style={{ margin: '0 0 40px', fontSize: 'clamp(30px,3.4vw,44px)', fontWeight: 400, lineHeight: 1.07, letterSpacing: '-0.007em' }}>{t.svcH}</h2>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1, border: '1px solid var(--line)', background: 'var(--line)' }}>
-            {services.map((s, i) => {
-              const on = revealAll || revealed['svc-' + s.id];
+            {services.map(s => {
+              const on = revealAll || revealed['svc-' + s.id] !== undefined;
+              const sd = revealAll ? 0 : revealed['svc-' + s.id] ?? 0;
               const Icon = SERVICE_ICONS[s.id as keyof typeof SERVICE_ICONS] as (typeof SERVICE_ICONS)[keyof typeof SERVICE_ICONS] | undefined;
               const svc = (
               <div key={s.id} data-reveal={'svc-' + s.id} className="svc"
                 onMouseMove={config.spotlight ? spotMove : undefined}
                 onMouseLeave={config.spotlight ? spotLeave : undefined}
-                style={{ opacity: on ? 1 : 0, transform: on ? undefined : 'translate3d(0,18px,0)', transitionDelay: on ? `0s, ${(i % 2) * 60}ms, ${(i % 2) * 60}ms` : '0s' }}>
+                style={{ opacity: on ? 1 : 0, transform: on ? undefined : 'translate3d(0,18px,0)', transitionDelay: on ? `0s, ${sd}ms, ${sd}ms` : '0s' }}>
                 {config.spotlight && <span style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: 'radial-gradient(280px circle at var(--mx,-300px) var(--my,-300px),var(--spot),transparent 65%)' }} />}
                 {s.icon
                   ? <img src={s.icon} loading="lazy" alt="" style={{ width: 26, height: 26, objectFit: 'contain', display: 'block' }} />
@@ -545,17 +548,19 @@ export default function Site({ initial }: { initial: SiteData }) {
           </div>
           <h2 style={{ margin: '0 0 40px', fontSize: 'clamp(30px,3.4vw,44px)', fontWeight: 400, lineHeight: 1.07, letterSpacing: '-0.007em' }}>{t.projH}</h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(340px,1fr))', gap: 22 }}>
-            {items.map((w, i) => {
-              const on = revealAll || revealed[w.id];
+            {items.map(w => {
+              const on = revealAll || revealed[w.id] !== undefined;
               const ci = (cardPic[w.id] || 0) % Math.max(w.media.length, 1);
               const hasCar = w.media.length > 1;
               const cur = w.media[ci];
+              // the wrapper owns the reveal, so hover lift and tilt on the card never fight it
               return (
-                <a key={w.id} data-card={w.id} data-reveal={w.id} className="card"
+                <Reveal key={w.id} data-reveal={w.id} on={on} delay={revealAll ? 0 : revealed[w.id] ?? 0} soft={revealAll}>
+                <a data-card={w.id} className="card"
                   onClick={() => openModal(w, ci)}
                   onMouseMove={config.spotlight || tiltOn ? cardMove : undefined}
                   onMouseLeave={config.spotlight || tiltOn ? cardLeave : undefined}
-                  style={{ opacity: on ? 1 : 0, transform: on ? undefined : `translate3d(${i % 2 ? 36 : -36}px,0,0)`, transformStyle: tiltOn ? 'preserve-3d' : undefined }}>
+                  style={{ transformStyle: tiltOn ? 'preserve-3d' : undefined }}>
                   {config.spotlight && <span style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 2, background: 'radial-gradient(280px circle at var(--mx,-300px) var(--my,-300px),var(--spot),transparent 65%)' }} />}
                   {cur ? (
                     <span style={{ position: 'relative', display: 'block', aspectRatio: '16/10', borderBottom: '1px solid var(--line)', overflow: 'hidden' }}>
@@ -595,6 +600,7 @@ export default function Site({ initial }: { initial: SiteData }) {
                     {!!w.cat && <div style={{ marginTop: 6, fontSize: 12, letterSpacing: '.04em', color: 'var(--muted)' }}>{w.cat}</div>}
                   </div>
                 </a>
+                </Reveal>
               );
             })}
           </div>
