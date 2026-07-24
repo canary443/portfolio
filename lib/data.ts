@@ -30,6 +30,8 @@ export interface FaqItem {
 // on capable devices, so 'image' hero and 'dot' cursor stay the safe fallback.
 export type HeroBg = 'image' | 'pixel-blast' | 'dither' | 'threads' | 'liquid-chrome';
 export type CursorStyle = 'dot' | 'pixel-trail' | 'target' | 'native';
+// cyrillic companion font for the russian locale (latin stays satoshi)
+export type RuFont = 'onest' | 'carlito' | 'jost';
 // color presets for the hero background effects (pixel blast, dither, ...)
 export const HERO_PRESETS: { id: string; label: string; color: string }[] = [
   { id: 'mono', label: 'Mono', color: '#8f8f8f' },
@@ -53,6 +55,7 @@ export interface SiteData {
   heroBg?: HeroBg; heroPreset?: string; cursorStyle?: CursorStyle;
   fxGradualBlur?: boolean; fxHeadlineReveal?: boolean;
   fxCardTilt?: boolean;
+  fontRu?: RuFont;
   // interface text overrides per language; empty/missing falls back to lib/i18n defaults
   i18n?: Partial<Record<Lang, Partial<Dict>>>;
 }
@@ -69,6 +72,7 @@ export const DEFAULTS: SiteData = {
   fxGradualBlur: true,
   fxHeadlineReveal: true,
   fxCardTilt: false,
+  fontRu: 'onest',
   services: [
     { id: 's1', glyph: '▤', icon: null, title: 'Sites', titleRu: 'Сайты', desc: 'Landings, portfolios, shops. Fast and clean.', descRu: 'Лендинги, портфолио, магазины. Быстро и аккуратно.' },
     { id: 's2', glyph: '◉', icon: null, title: 'Bots', titleRu: 'Боты', desc: 'Telegram bots: shops, monitors, payments, alerts.', descRu: 'Телеграм-боты: магазины, мониторинги, оплата, уведомления.' },

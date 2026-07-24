@@ -19,6 +19,7 @@ Design reference for AimworkSpace. Based on the "Hyperstudio" style direction: e
 ## Type
 - **Satoshi** (Fontshare) 400/500 — everything. Weight 400 headlines, hierarchy through size and tracking, never bold shouting.
 - **Onest** (Google) — Cyrillic fallback in the same stack: `'Satoshi','Onest',ui-sans-serif,...`
+- RU locale can swap the Cyrillic companion via the admin `fontRu` setting: Onest (default), Carlito (humanist, neutral) or Jost (geometric, more character). Latin always stays Satoshi.
 - Display: clamp(38–60px), letter-spacing -0.011em. Section h2: 30–44px. Body 14–16px. Labels: 13px, letter-spacing .12em, `// LABEL` style.
 
 ## Components

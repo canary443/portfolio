@@ -57,11 +57,19 @@ const STACK_LOGOS = STACK.map(([slug, label, href]) => ({
 // language dropdown chevron (path inherits the svg fill)
 const CHEV = (<path d="M10.0878 4.83761C10.3157 4.6098 10.6849 4.6098 10.9127 4.83761C11.1405 5.06542 11.1405 5.43469 10.9127 5.66248L7.41272 9.16248C7.18493 9.39027 6.81566 9.39024 6.58785 9.16248L3.08785 5.66248C2.86004 5.43467 2.86004 5.06542 3.08785 4.83761C3.31565 4.6098 3.68491 4.6098 3.91272 4.83761L7.00028 7.92518L10.0878 4.83761Z" />);
 
-export default function Site({ initial }: { initial: SiteData }) {
+// which cyrillic font backs satoshi in the russian locale
+const RU_FONT_STACK: Record<string, string | undefined> = {
+  onest: undefined,
+  carlito: "'Satoshi', 'Carlito', ui-sans-serif, system-ui, sans-serif",
+  jost: "'Satoshi', 'Jost', ui-sans-serif, system-ui, sans-serif"
+};
+
+export default function Site({ initial, initialLang = 'en' }: { initial: SiteData; initialLang?: Lang }) {
   // the server already read the shared content, so the first paint is real.
   // the client only re-pulls it when the tab gets focus again
   const [data, setData] = useState<SiteData>(initial);
-  const [lang, setLangState] = useState<Lang>('en');
+  // language arrives from the cookie, so there is no flash of english
+  const [lang, setLangState] = useState<Lang>(initialLang);
   const [scrolled, setScrolled] = useState(false);
   // id -> stagger delay in ms, assigned by batch position when it enters
   const [revealed, setRevealed] = useState<Record<string, number>>({});
@@ -149,7 +157,12 @@ export default function Site({ initial }: { initial: SiteData }) {
 
   // language + rate, and re-pull content on focus to pick up admin edits
   useEffect(() => {
-    setLangState((localStorage.getItem('zx_lang') as Lang) || 'en');
+    // old visitors only have localStorage: honor it once and set the cookie
+    const saved = localStorage.getItem('zx_lang') as Lang | null;
+    if (saved && saved !== initialLang) {
+      setLangState(saved);
+      document.cookie = 'zx_lang=' + saved + ';path=/;max-age=31536000;samesite=lax';
+    }
     fetchRub().then(setRub);
     // preview mode (admin iframe): paint from the draft the admin writes to
     // localStorage and live-update on storage events, do not pull the server
@@ -294,7 +307,13 @@ export default function Site({ initial }: { initial: SiteData }) {
     return () => window.removeEventListener('keydown', onKey);
   }, [closeModal]);
 
-  const setLang = (l: Lang) => { localStorage.setItem('zx_lang', l); setLangState(l); setLangOpen(false); };
+  const setLang = (l: Lang) => {
+    localStorage.setItem('zx_lang', l);
+    // cookie so the server paints the right language on the next visit
+    document.cookie = 'zx_lang=' + l + ';path=/;max-age=31536000;samesite=lax';
+    setLangState(l);
+    setLangOpen(false);
+  };
   // admin can override any interface string per language; empty falls back to the default
   const t = { ...T[lang], ...(data.i18n?.[lang] ?? {}) } as (typeof T)[Lang];
   const ru = lang === 'ru';
@@ -431,7 +450,7 @@ export default function Site({ initial }: { initial: SiteData }) {
   const navBlur = sc ? (safari ? 'blur(13px) saturate(1.5)' : 'blur(22px) saturate(1.9)') : 'none';
 
   return (
-    <div className="site-page" data-custom-cursor={dotOn ? 'true' : undefined} style={{ minHeight: '100vh', overflowX: 'clip' }}>
+    <div className="site-page" data-custom-cursor={dotOn ? 'true' : undefined} style={{ minHeight: '100vh', overflowX: 'clip', fontFamily: ru ? RU_FONT_STACK[data.fontRu || 'onest'] : undefined }}>
       {/* nav */}
       <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100, display: 'flex', justifyContent: 'center', padding: sc ? '12px 16px 0' : '0px', transition: 'padding .6s ' + EASE, pointerEvents: 'none' }}>
         <div style={{
@@ -578,7 +597,7 @@ export default function Site({ initial }: { initial: SiteData }) {
                         <span className="carr" style={{ left: 8, zIndex: 3 }} onClick={e => { e.stopPropagation(); e.preventDefault(); setCardPic(c => ({ ...c, [w.id]: (ci - 1 + w.media.length) % w.media.length })); }}>‹</span>
                         <span className="carr" style={{ right: 8, zIndex: 3 }} onClick={e => { e.stopPropagation(); e.preventDefault(); setCardPic(c => ({ ...c, [w.id]: (ci + 1) % w.media.length })); }}>›</span>
                         <span style={{ position: 'absolute', left: 0, right: 0, bottom: 8, display: 'flex', justifyContent: 'center', gap: 5, zIndex: 3 }}>
-                          {w.media.map((_, di) => <span key={di} style={{ width: 6, height: 6, borderRadius: 99, background: di === ci ? '#f3f3f3' : 'rgba(255,255,255,.35)', transition: 'background .25s ease' }} />)}
+                          {w.media.map((_, di) => <span key={di} style={{ width: 6, height: 6, borderRadius: 99, background: di === ci ? '#f3f3f3' : 'rgba(255,255,255,.35)', transform: di === ci ? 'scale(1.25)' : 'scale(1)', transition: 'background .25s ease, transform .25s var(--ease)' }} />)}
                         </span>
                       </>}
                     </span>

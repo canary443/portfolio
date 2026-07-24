@@ -4,7 +4,7 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   loadData, saveData, resetData, loadRemote, saveRemote, DEFAULTS,
-  SiteData, Service, Work, TeamProject, FaqItem, LogEntry, HeroBg, CursorStyle, HERO_PRESETS
+  SiteData, Service, Work, TeamProject, FaqItem, LogEntry, HeroBg, CursorStyle, RuFont, HERO_PRESETS
 } from '@/lib/data';
 import { shrinkImage, dataUrlKb, uploadMedia } from '@/lib/img';
 import { T, type Dict } from '@/lib/i18n';
@@ -32,6 +32,12 @@ const FX_TOGGLES: [FxKey, string, boolean][] = [
   ['fxHeadlineReveal', 'Hero headline reveal', true],
   ['fxCardTilt', 'Project card tilt', false]
 ];
+// cyrillic font options; the stack matches the one the site applies for ru
+const RU_FONT_OPTS: [RuFont, string, string][] = [
+  ['onest', 'Onest', "'Onest', sans-serif"],
+  ['carlito', 'Carlito', "'Carlito', sans-serif"],
+  ['jost', 'Jost', "'Jost', sans-serif"]
+];
 
 type Sec = 'about' | 'services' | 'works' | 'projects' | 'faq' | 'settings' | 'i18n' | 'preview';
 type Form = Record<string, string>;
@@ -49,7 +55,7 @@ const SECTION_KEYS: Partial<Record<Sec, (keyof SiteData)[]>> = {
   works: ['works'],
   projects: ['projects'],
   faq: ['faq'],
-  settings: ['telegram', 'github', 'email', 'heroBg', 'heroPreset', 'cursorStyle', 'fxGradualBlur', 'fxHeadlineReveal', 'fxCardTilt'],
+  settings: ['telegram', 'github', 'email', 'heroBg', 'heroPreset', 'cursorStyle', 'fxGradualBlur', 'fxHeadlineReveal', 'fxCardTilt', 'fontRu'],
   i18n: ['i18n']
 };
 
@@ -677,6 +683,22 @@ export default function Admin() {
                     const active = (data.cursorStyle || 'dot') === val;
                     return <span key={val} className="aghost" style={{ padding: '6px 14px', fontSize: 13, borderColor: active ? '#474747' : '#2a2a2a', color: active ? '#f3f3f3' : '#9c9c9c' }} onClick={() => persist({ ...data, cursorStyle: val })}>{label}</span>;
                   })}
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '10px 0' }}>
+                <span style={{ fontSize: 14, width: 150, paddingTop: 6 }}>Russian font</span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {RU_FONT_OPTS.map(([val, label, stack]) => {
+                      const active = (data.fontRu || 'onest') === val;
+                      return <span key={val} className="aghost" style={{ padding: '6px 14px', fontSize: 13, fontFamily: stack, borderColor: active ? '#474747' : '#2a2a2a', color: active ? '#f3f3f3' : '#9c9c9c' }} onClick={() => persist({ ...data, fontRu: val })}>{label}</span>;
+                    })}
+                  </div>
+                  {/* sample line in the picked font, so the choice is visible right here */}
+                  <div style={{ marginTop: 10, fontSize: 15, lineHeight: 1.5, color: '#9c9c9c', fontFamily: RU_FONT_OPTS.find(([v]) => v === (data.fontRu || 'onest'))![2] }}>
+                    Съешь ещё этих мягких французских булок, да выпей чаю · 1234567890
+                  </div>
                 </div>
               </div>
 

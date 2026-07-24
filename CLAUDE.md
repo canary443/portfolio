@@ -33,4 +33,4 @@ Before any UI / design / motion / React work in this repo, load these skills fir
 - Deploy: Vercel project `aimworkspace` (team `t3rmynals-projects`). The owner connects the custom domain manually.
 - Motion: lenis smooth scroll (lerp .09); Safari gets cheaper compositing (no mix-blend-mode on cursor/grain, lighter blur); `prefers-reduced-motion` is respected everywhere (no lenis, no parallax, fades instead of slides, native cursor).
 - The hero dot-art image is `public/assets/hero-hands.avif`; partner logos in `public/assets/`.
-- Fonts: Satoshi (Fontshare) + Onest (Google, Cyrillic fallback). Icons: simpleicons CDN.
+- Fonts: Satoshi (Fontshare); the Cyrillic companion for RU is admin-selectable (`fontRu`: Onest default, Carlito, Jost - all loaded from Google Fonts). Icons: simpleicons CDN.

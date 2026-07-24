@@ -83,23 +83,25 @@ a:hover { color: var(--text-strong); }
 .pill:active, .ghost:active { transform: scale(.97); }
 .svc { padding: 40px 44px; background: var(--bg); position: relative; transition: background .25s ease, opacity .6s var(--ease), transform .6s var(--ease); }
 .svc:hover { background: var(--hover); }
-/* reveal opacity slides over .5s (set inline); hover/press transform is quick and composed */
-.card { position: relative; cursor: pointer; text-decoration: none; color: var(--text); display: block; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--card); transition: border-color .2s ease, transform .34s var(--ease); }
+/* the reveal wrapper is the grid item now, so the card fills it to keep rows even */
+.card { position: relative; cursor: pointer; text-decoration: none; color: var(--text); display: block; height: 100%; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--card); transition: border-color .2s ease, transform .34s var(--ease); }
 .card:hover { border-color: var(--faint); transform: translateY(-3px); }
 .card:hover:active { transform: translateY(-3px) scale(.99); }
 .card:active { transform: scale(.99); }
 .card:hover .carr { opacity: 1 !important; }
-.carr { position: absolute; top: 50%; transform: translateY(-50%); width: 30px; height: 30px; border-radius: 99px; background: rgba(10,10,10,.6); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); border: 1px solid rgba(255,255,255,.14); display: flex; align-items: center; justify-content: center; color: #f3f3f3; font-size: 14px; user-select: none; opacity: 0; transition: opacity .2s ease, background .15s ease; }
+.carr { position: absolute; top: 50%; transform: translateY(-50%); width: 30px; height: 30px; border-radius: 99px; background: rgba(10,10,10,.6); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); border: 1px solid rgba(255,255,255,.14); display: flex; align-items: center; justify-content: center; color: #f3f3f3; font-size: 14px; user-select: none; opacity: 0; transition: opacity .2s ease, background .15s ease, transform .15s ease; }
 .carr:hover { background: rgba(30,30,30,.85); }
-.marr { position: absolute; top: 50%; transform: translateY(-50%); width: 34px; height: 34px; border-radius: 99px; background: rgba(10,10,10,.62); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); border: 1px solid rgba(255,255,255,.14); display: flex; align-items: center; justify-content: center; color: #f3f3f3; font-size: 15px; user-select: none; transition: background .15s ease; }
+.carr:active { transform: translateY(-50%) scale(.88); }
+.marr { position: absolute; top: 50%; transform: translateY(-50%); width: 34px; height: 34px; border-radius: 99px; background: rgba(10,10,10,.62); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); border: 1px solid rgba(255,255,255,.14); display: flex; align-items: center; justify-content: center; color: #f3f3f3; font-size: 15px; user-select: none; transition: background .15s ease, transform .15s ease; }
 .marr:hover { background: rgba(30,30,30,.85); }
-.faqrow { display: flex; align-items: center; gap: 16px; padding: 20px 4px; user-select: none; }
+.marr:active { transform: translateY(-50%) scale(.88); }
+.faqrow { display: flex; align-items: center; gap: 16px; padding: 20px 4px; user-select: none; transition: background .2s ease; }
 .faqrow:hover { background: var(--hover); }
 .partner { opacity: .8; transition: opacity .2s ease, transform .3s cubic-bezier(.22,1,.36,1); }
 .partner:hover { opacity: 1; transform: translateY(-2px); }
-.ftr { display: flex; align-items: center; gap: 6px; color: var(--muted); text-decoration: none; }
+.ftr { display: flex; align-items: center; gap: 6px; color: var(--muted); text-decoration: none; transition: color .15s ease; }
 .ftr:hover { color: var(--text); }
-.ulink { color: var(--text); text-decoration: underline; text-underline-offset: 3px; }
+.ulink { color: var(--text); text-decoration: underline; text-underline-offset: 3px; transition: color .15s ease; }
 .ulink:hover { color: var(--text-strong); }
 
 /* language picker, 1:1 from binware.su */
@@ -111,9 +113,10 @@ a:hover { color: var(--text-strong); }
 .header_lang_button { width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; }
 .header_lang_button svg { fill: rgba(255,255,255,.6); transition: transform .25s ease; }
 .header_lang_button.active svg { transform: rotate(180deg); }
-.lang_dropdown { position: absolute; top: calc(100% + 2px); right: 0; width: 107px; padding: 4px; border-radius: 14px; background: #171717; box-shadow: 0 4px 12px rgba(0,0,0,.15); opacity: 0; transform: translateY(-5px); pointer-events: none; transition: .25s ease; z-index: 30; }
-.lang_dropdown.active { opacity: 1; transform: translateY(0); pointer-events: auto; }
-.lang_option { height: 23px; display: flex; align-items: center; gap: 6px; padding: 0 8px; border-radius: 12px; font-size: 11px; line-height: 1; color: rgba(255,255,255,.6); }
+/* scales in from its trigger corner, not from center */
+.lang_dropdown { position: absolute; top: calc(100% + 2px); right: 0; width: 107px; padding: 4px; border-radius: 14px; background: #171717; box-shadow: 0 4px 12px rgba(0,0,0,.15); opacity: 0; transform: translateY(-5px) scale(.96); transform-origin: top right; pointer-events: none; transition: opacity .18s ease, transform .22s var(--ease); z-index: 30; }
+.lang_dropdown.active { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
+.lang_option { height: 23px; display: flex; align-items: center; gap: 6px; padding: 0 8px; border-radius: 12px; font-size: 11px; line-height: 1; color: rgba(255,255,255,.6); transition: background .15s ease, color .15s ease; }
 .lang_option:not(:last-child) { margin-bottom: 4px; }
 .lang_option img { width: 17px; height: 17px; display: block; }
 .lang_option:hover, .lang_option.active { background: #1f1f1f; color: #ffffff; }
