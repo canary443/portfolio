@@ -4,6 +4,44 @@
 
 const RAMP = " .`':,;\"~-_+<>i!lI?/\\|()1{}[]rcvunxzjftLCJUYXZO0Qoahkbdpqwm*WMB8&%$#@";
 
+// draw pasted text art (ascii or braille) onto a black canvas, one glyph per
+// grid cell like a terminal. upscale makes the art span the full width;
+// without it the art keeps a small terminal-ish size, centered
+export function renderTextArt(text: string, upscale = true, targetW = 3000): string {
+  const lines = text.replace(/\r/g, '').split('\n')
+    // drop trailing spaces and blank braille cells so centering is true
+    .map(l => l.replace(/[\s⠀]+$/g, ''));
+  while (lines.length && !lines[0]) lines.shift();
+  while (lines.length && !lines[lines.length - 1]) lines.pop();
+  if (!lines.length) throw new Error('empty art');
+
+  const cols = Math.max(...lines.map(l => [...l].length));
+  const cellR = 0.6, lineR = 1.2; // monospace cell proportions
+  const font = upscale ? Math.floor((targetW * 0.92) / (cols * cellR)) : 26;
+  const cw = font * cellR, chh = font * lineR;
+  const artW = cols * cw;
+  const pad = Math.round(chh);
+  const W = targetW, H = Math.round(lines.length * chh + pad * 2);
+
+  const c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  const ctx = c.getContext('2d')!;
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, W, H);
+  ctx.font = `${font}px Menlo, monospace`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#f3f3f3';
+  const ox = (W - artW) / 2;
+  lines.forEach((line, y) => {
+    [...line].forEach((ch, x) => {
+      if (ch === ' ' || ch === '⠀') return;
+      ctx.fillText(ch, ox + x * cw + cw / 2, pad + y * chh + chh / 2);
+    });
+  });
+  return c.toDataURL('image/png');
+}
+
 const load = (src: string): Promise<HTMLImageElement> => new Promise((ok, no) => {
   const im = new Image();
   im.onload = () => ok(im);

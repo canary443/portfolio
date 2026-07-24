@@ -7,7 +7,7 @@ import {
   SiteData, Service, Work, TeamProject, FaqItem, LogEntry, HeroBg, CursorStyle, RuFont, HeroArt, HERO_PRESETS
 } from '@/lib/data';
 import { shrinkImage, dataUrlKb, uploadMedia } from '@/lib/img';
-import { renderAscii } from '@/lib/ascii';
+import { renderAscii, renderTextArt } from '@/lib/ascii';
 import { T, type Dict } from '@/lib/i18n';
 
 // interface strings editable in the i18n section (key -> friendly label)
@@ -34,7 +34,7 @@ const FX_TOGGLES: [FxKey, string, boolean][] = [
   ['fxCardTilt', 'Project card tilt', false]
 ];
 // hero picture options for the 'image' background mode
-const HERO_ART_OPTS: [HeroArt, string][] = [['cat', 'Ascii cat'], ['hands', 'Dot hands'], ['custom', 'Custom']];
+const HERO_ART_OPTS: [HeroArt, string][] = [['cat', 'Ascii cat'], ['hands', 'Dot hands'], ['braille', 'Braille cat'], ['custom', 'Custom']];
 // aspect choices for the about media; auto keeps the natural ratio
 const ABOUT_ASPECTS: [string, string][] = [['16/9', '16:9'], ['4/3', '4:3'], ['1/1', '1:1'], ['3/4', '3:4'], ['auto', 'Auto']];
 // cyrillic font options; the stack matches the one the site applies for ru
@@ -87,6 +87,10 @@ export default function Admin() {
   const [aboutW, setAboutW] = useState<number | null>(null);
   // same for the hero art scale
   const [heroScale, setHeroScale] = useState<number | null>(null);
+  // paste-your-own ascii art box
+  const [asciiOpen, setAsciiOpen] = useState(false);
+  const [asciiText, setAsciiText] = useState('');
+  const [asciiUp, setAsciiUp] = useState(true);
 
   const flashT = useRef<ReturnType<typeof setTimeout>>(undefined);
   const aboutRef = useRef<HTMLTextAreaElement>(null);
@@ -193,6 +197,17 @@ export default function Admin() {
   const commitAboutW = async () => {
     if (aboutW === null || aboutW === (data.aboutImgW || 252)) { setAboutW(null); return; }
     if (await persist({ ...data, aboutImgW: aboutW })) setAboutW(null);
+  };
+  // pasted ascii / braille art: rendered on a canvas and saved as the custom art
+  const saveAsciiArt = async () => {
+    try {
+      const png = renderTextArt(asciiText, asciiUp);
+      if (dataUrlKb(png) > 4200) { setErr('not saved: the art is too big'); return; }
+      const url = await uploadMedia(png);
+      if (await persist({ ...data, heroArt: 'custom', heroArtCustom: url })) { setAsciiOpen(false); setAsciiText(''); }
+    } catch {
+      setErr('not saved: paste some ascii art first');
+    }
   };
   const commitHeroScale = async () => {
     if (heroScale === null || heroScale === (data.heroArtScale || 100)) { setHeroScale(null); return; }
@@ -780,12 +795,23 @@ export default function Admin() {
                       };
                       return <span key={val} className="aghost" style={{ padding: '6px 14px', fontSize: 13, borderColor: active ? '#474747' : '#2a2a2a', color: active ? '#f3f3f3' : '#9c9c9c' }} onClick={pick}>{label}</span>;
                     })}
+                    <span className="aghost" style={{ padding: '6px 14px', fontSize: 13, borderColor: asciiOpen ? '#474747' : '#2a2a2a' }} onClick={() => setAsciiOpen(o => !o)}>Paste ascii…</span>
                     {!!data.heroArtCustom && <>
                       <span className="aghost" style={{ padding: '6px 14px', fontSize: 13 }} onClick={() => heroImgRef.current?.click()}>Replace…</span>
                       <span className="adel" onClick={() => persist({ ...data, heroArtCustom: null, heroArt: (data.heroArt || 'cat') === 'custom' ? 'cat' : data.heroArt })}>remove</span>
                     </>}
                   </div>
-                  <div style={{ marginTop: 6, fontSize: 12, color: '#474747' }}>custom: any picture you upload turns into the same ascii style by itself</div>
+                  <div style={{ marginTop: 6, fontSize: 12, color: '#474747' }}>custom: an uploaded picture turns into the same ascii style by itself; pasted ascii/braille art is drawn as is</div>
+                  {asciiOpen && (
+                    <div style={{ marginTop: 10 }}>
+                      <textarea className="ainput" value={asciiText} onChange={e => setAsciiText(e.target.value)} rows={8} placeholder={'paste ascii or braille art here'} spellCheck={false} style={{ width: '100%', maxWidth: 520, fontFamily: 'Menlo, monospace', fontSize: 12, lineHeight: 1.2, whiteSpace: 'pre', overflowX: 'auto' }} />
+                      <div style={{ marginTop: 8, display: 'flex', gap: 8, alignItems: 'center' }}>
+                        {/* upscale draws the art across the full width; off keeps a small terminal size */}
+                        <span className="aghost" style={{ padding: '6px 14px', fontSize: 13, borderColor: asciiUp ? '#474747' : '#2a2a2a', color: asciiUp ? '#f3f3f3' : '#9c9c9c' }} onClick={() => setAsciiUp(u => !u)}>Upscale: {asciiUp ? 'On' : 'Off'}</span>
+                        <span className="abtn" style={{ padding: '6px 16px', fontSize: 13 }} onClick={saveAsciiArt}>Render &amp; save</span>
+                      </div>
+                    </div>
+                  )}
                   {/* size multiplier for the picked art; saves when the slider is released */}
                   <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 12 }}>
                     <span style={{ fontSize: 13, width: 60, color: '#9c9c9c' }}>Scale</span>

@@ -20,7 +20,7 @@ Flat top-level fields (flat, not nested — see the merge note below):
 | Field | Type | Default | What it controls |
 |---|---|---|---|
 | `heroBg` | `'image' \| 'pixel-blast' \| 'dither' \| 'threads'` | `image` | Hero background. `image` = the hero art picture (also the universal fallback). |
-| `heroArt` | `'cat' \| 'hands' \| 'custom'` | `cat` | Which picture the `image` mode shows: ascii cat, dot-art hands, or the uploaded one. |
+| `heroArt` | `'cat' \| 'hands' \| 'braille' \| 'custom'` | `cat` | Which picture the `image` mode shows: ascii cat, dot-art hands, braille cat, or the custom one. Custom comes from an upload (auto-ascii) or from pasted ascii/braille text (`renderTextArt`, with an upscale toggle). |
 | `heroArtCustom` | `string \| null` | `null` | Custom hero picture URL. The admin upload auto-renders it into ascii art (`lib/ascii.ts`) before storing via `/api/upload`. |
 | `heroArtScale` | `number` | `100` | Percent multiplier on the hero art's base width (50-150, slider in the admin). |
 | `cursorStyle` | `'dot' \| 'pixel-trail' \| 'target' \| 'native'` | `dot` | Cursor. `target` = ReactBits TargetCursor (4 corners lock onto links/buttons/cards). Reduced-motion / touch force the plain cursor. |
