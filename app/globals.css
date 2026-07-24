@@ -22,6 +22,13 @@ html.lenis, html.lenis body { height: auto; }
 .in2 { animation: zxin .55s var(--ease) .16s both; }
 .in3 { animation: zxin .7s var(--ease) .22s both; }
 
+/* hero dot-art hands: wide overflow crop, reserve space so it never collapses */
+.hero-hands { width: 114%; height: auto; margin-left: -7%; aspect-ratio: 3217 / 935; }
+/* phones: zoom the hands in so they read as a hero, not a thin sliver */
+@media (max-width: 640px) {
+  .hero-hands { width: 210%; margin-left: -55%; }
+}
+
 /* stack marquee */
 .marq { animation: zxmarq 36s linear infinite; }
 body {
@@ -38,6 +45,16 @@ a:hover { color: #ffffff; }
 /* hide the native cursor only when the site dot is active */
 @media (pointer: fine) and (prefers-reduced-motion: no-preference) {
   .site-page[data-custom-cursor="true"] * { cursor: none !important; }
+}
+
+/* nav pill layout (spacing lives here so it can shrink on phones) */
+.nav-pill { gap: 22px; padding: 0 24px; }
+.nav-links { display: flex; gap: 22px; font-size: 14px; margin: 0 auto; }
+/* phones and small tablets: drop the section links, keep brand + lang + chat */
+@media (max-width: 768px) {
+  .nav-pill { gap: 12px; padding: 0 16px; }
+  .nav-links { display: none; }
+  .nav-brand { margin-right: auto; }
 }
 
 /* hover states (inline styles cannot do :hover) */
