@@ -7,6 +7,21 @@ import {
   SiteData, Service, Work, TeamProject, FaqItem, LogEntry, HeroBg, CursorStyle, HERO_PRESETS
 } from '@/lib/data';
 import { shrinkImage, dataUrlKb, uploadMedia } from '@/lib/img';
+import { T, type Dict } from '@/lib/i18n';
+
+// interface strings editable in the i18n section (key -> friendly label)
+const I18N_FIELDS: [keyof Dict, string][] = [
+  ['heroT', 'Hero heading'], ['heroSub', 'Hero subheading'],
+  ['start', 'Button: start'], ['view', 'Button: view work'],
+  ['navS', 'Nav: services'], ['navP', 'Nav: projects'], ['navC', 'Nav: contact'],
+  ['svcH', 'Services heading'], ['projH', 'Projects heading'],
+  ['aboutH', 'About heading'], ['based', 'About: location chip'],
+  ['faqH', 'FAQ heading'], ['ctH', 'Contact heading'], ['ctSub', 'Contact subheading'],
+  ['dm', 'Contact: dm text'], ['feat', 'Featured-in label'], ['chlog', 'Changelog label'],
+  ['team', 'Badge: team project'], ['madeFor', 'Meta: made for'], ['photoSoon', 'Placeholder: no pic'],
+  ['open', 'Modal: open button'], ['close', 'Modal: close button'], ['copied', 'Toast: copied'],
+  ['chat', 'Chat label']
+];
 
 // effect controls, rendered in the settings page
 type FxKey = 'fxGradualBlur' | 'fxHeadlineReveal' | 'fxCardTilt';
@@ -18,13 +33,13 @@ const FX_TOGGLES: [FxKey, string, boolean][] = [
   ['fxCardTilt', 'Project card tilt', false]
 ];
 
-type Sec = 'about' | 'services' | 'works' | 'projects' | 'faq' | 'settings' | 'preview';
+type Sec = 'about' | 'services' | 'works' | 'projects' | 'faq' | 'settings' | 'i18n' | 'preview';
 type Form = Record<string, string>;
 
 const NAV: [Sec, string][] = [
   ['about', 'About'], ['services', 'Services'], ['works', 'For sale'],
   ['projects', 'Team projects'], ['faq', 'FAQ'], ['settings', 'Settings'],
-  ['preview', 'Live preview']
+  ['i18n', 'Interface text'], ['preview', 'Live preview']
 ];
 
 // which SiteData keys each page owns, for json export / import
@@ -34,7 +49,8 @@ const SECTION_KEYS: Partial<Record<Sec, (keyof SiteData)[]>> = {
   works: ['works'],
   projects: ['projects'],
   faq: ['faq'],
-  settings: ['telegram', 'github', 'email', 'heroBg', 'heroPreset', 'cursorStyle', 'fxGradualBlur', 'fxHeadlineReveal', 'fxCardTilt']
+  settings: ['telegram', 'github', 'email', 'heroBg', 'heroPreset', 'cursorStyle', 'fxGradualBlur', 'fxHeadlineReveal', 'fxCardTilt'],
+  i18n: ['i18n']
 };
 
 export default function Admin() {
@@ -135,6 +151,21 @@ export default function Admin() {
     setForm(f => ({ ...f, [k]: e.target.value }));
   const clearForm = () => { setForm({}); setImgs([]); setIcon(null); setVideo(''); setLogs([]); setEditId(null); };
 
+  // build the i18n overrides from the form, keeping only non-empty values so
+  // untouched strings keep falling back to the built-in defaults
+  const saveI18n = () => {
+    const pick = (p: 'en' | 'ru') => {
+      const o: Record<string, string> = {};
+      I18N_FIELDS.forEach(([key]) => { const v = F(p + '_' + String(key)).trim(); if (v) o[String(key)] = v; });
+      return o;
+    };
+    const en = pick('en'), ru = pick('ru');
+    const i18n: NonNullable<SiteData['i18n']> = {};
+    if (Object.keys(en).length) i18n.en = en as Partial<Dict>;
+    if (Object.keys(ru).length) i18n.ru = ru as Partial<Dict>;
+    persist({ ...data, i18n });
+  };
+
   // json export / import per page
   const downloadJson = (name: string, obj: unknown) => {
     const blob = new Blob([JSON.stringify(obj, null, 2)], { type: 'application/json' });
@@ -193,6 +224,14 @@ export default function Admin() {
     setSec(k); clearForm(); setConfirmReset(false);
     if (k === 'about') setForm({ about: data.about, aboutRu: data.aboutRu || '' });
     if (k === 'settings') setForm({ telegram: data.telegram, github: data.github, email: data.email });
+    if (k === 'i18n') {
+      const f: Form = {};
+      I18N_FIELDS.forEach(([key]) => {
+        f['en_' + key] = data.i18n?.en?.[key] || '';
+        f['ru_' + key] = data.i18n?.ru?.[key] || '';
+      });
+      setForm(f);
+    }
   };
 
   const tryLogin = async () => {
@@ -666,6 +705,26 @@ export default function Admin() {
               }} style={{ border: '1px solid rgba(255,107,107,.4)', color: '#ff6b6b', borderRadius: 9999, padding: '9px 20px', fontSize: 14, cursor: 'pointer', userSelect: 'none', display: 'inline-block' }}>
                 {confirmReset ? 'Sure? Click again' : 'Reset all content to defaults'}
               </span>
+            </div>
+          </>}
+
+          {/* interface text (i18n) */}
+          {sec === 'i18n' && <>
+            <div style={{ fontSize: 22 }}>Interface text</div>
+            <div style={{ margin: '4px 0 18px', fontSize: 13, color: '#9c9c9c', lineHeight: 1.6 }}>Static UI strings in English and Russian. Leave a field empty to use the built-in default (shown greyed as the placeholder). Left = EN, right = RU.</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 760 }}>
+              {I18N_FIELDS.map(([key, label]) => (
+                <div key={String(key)}>
+                  <div style={{ fontSize: 12, color: '#9c9c9c', marginBottom: 6 }}>{label} <span style={{ color: '#474747' }}>({String(key)})</span></div>
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    {inp('en_' + String(key), T.en[key], { flex: 1 })}
+                    {inp('ru_' + String(key), T.ru[key], { flex: 1 })}
+                  </div>
+                </div>
+              ))}
+              <div style={{ marginTop: 6 }}>
+                <span className="abtn" onClick={saveI18n}>Save</span>
+              </div>
             </div>
           </>}
 

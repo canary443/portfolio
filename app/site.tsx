@@ -283,7 +283,8 @@ export default function Site({ initial }: { initial: SiteData }) {
   }, [closeModal]);
 
   const setLang = (l: Lang) => { localStorage.setItem('zx_lang', l); setLangState(l); setLangOpen(false); };
-  const t = T[lang];
+  // admin can override any interface string per language; empty falls back to the default
+  const t = { ...T[lang], ...(data.i18n?.[lang] ?? {}) } as (typeof T)[Lang];
   const ru = lang === 'ru';
 
   // step one card carousel to its next slide

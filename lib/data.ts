@@ -1,5 +1,7 @@
 // shared data layer: types, defaults, storage
 
+import type { Dict, Lang } from './i18n';
+
 const KEY = 'zx_data_v2';
 
 export interface Service {
@@ -51,6 +53,8 @@ export interface SiteData {
   heroBg?: HeroBg; heroPreset?: string; cursorStyle?: CursorStyle;
   fxGradualBlur?: boolean; fxHeadlineReveal?: boolean;
   fxCardTilt?: boolean;
+  // interface text overrides per language; empty/missing falls back to lib/i18n defaults
+  i18n?: Partial<Record<Lang, Partial<Dict>>>;
 }
 
 export const DEFAULTS: SiteData = {
