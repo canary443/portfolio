@@ -1,3 +1,9 @@
+/* tailwind is only used by the animate-ui icon components. preflight is off
+   (tailwind.config) so it never resets the hand-styled site. */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 @keyframes zxin { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 @keyframes zxmarq { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 @keyframes zxfade { from { opacity: 0; } to { opacity: 1; } }
