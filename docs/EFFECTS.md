@@ -20,7 +20,7 @@ Flat top-level fields (flat, not nested — see the merge note below):
 | Field | Type | Default | What it controls |
 |---|---|---|---|
 | `heroBg` | `'image' \| 'pixel-blast' \| 'dither' \| 'threads'` | `image` | Hero background. `image` = AVIF hands (also the universal fallback). |
-| `cursorStyle` | `'dot' \| 'pixel-trail' \| 'native'` | `dot` | Cursor. Safari + reduced-motion force `native` regardless. |
+| `cursorStyle` | `'dot' \| 'pixel-trail' \| 'target' \| 'native'` | `dot` | Cursor. `target` = ReactBits TargetCursor (4 corners lock onto links/buttons/cards). Reduced-motion / touch force the plain cursor. |
 | `fxGradualBlur` | `boolean` | `true` | Cinematic progressive blur at the hero->sheet seam and section edges (pure CSS). |
 | `fxHeadlineReveal` | `boolean` | `true` | Animated hero headline reveal (uses `motion`, not GSAP). |
 | `fxShapeBlur` | `boolean` | `false` | Soft morphing blurred glow behind the About/Contact heading. |
@@ -38,7 +38,8 @@ auto-installs the npm deps below.
 | Component | Purpose | npm deps it pulls | Weight |
 |---|---|---|---|
 | `GradualBlur-TS-TW` | progressive blur reveal | none (pure CSS/React) | free |
-| `PixelTrail-TS-TW` | pixelated cursor trail | ogl | light |
+| `TargetCursor-TS-TW` | 4-corner cursor that locks onto targets | gsap | light |
+| `PixelTrail-TS-TW` | pixelated cursor trail (NOT used - needs r3f/React19; hand-rolled instead) | n/a | - |
 | `Dither-TS-TW` | dithered noise background | ogl | light |
 | `Threads-TS-TW` | woven thread-line background | ogl | light |
 | `ShapeBlur-TS-TW` | morph blur on hover | three | medium |

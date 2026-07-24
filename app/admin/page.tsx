@@ -11,7 +11,7 @@ import { shrinkImage, dataUrlKb } from '@/lib/img';
 // effect controls, rendered in the settings page
 type FxKey = 'fxGradualBlur' | 'fxHeadlineReveal' | 'fxShapeBlur' | 'fxFluidGlass' | 'fxCardTilt';
 const HERO_BG_OPTS: [HeroBg, string][] = [['image', 'Image (hands)'], ['pixel-blast', 'Pixel blast'], ['threads', 'Threads'], ['liquid-chrome', 'Liquid chrome']];
-const CURSOR_OPTS: [CursorStyle, string][] = [['dot', 'Dot'], ['pixel-trail', 'Pixel trail'], ['native', 'Native']];
+const CURSOR_OPTS: [CursorStyle, string][] = [['dot', 'Dot'], ['pixel-trail', 'Pixel trail'], ['target', 'Target'], ['native', 'Native']];
 const FX_TOGGLES: [FxKey, string, boolean][] = [
   ['fxGradualBlur', 'Gradual blur seams', true],
   ['fxHeadlineReveal', 'Hero headline reveal', true],

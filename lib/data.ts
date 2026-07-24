@@ -27,7 +27,7 @@ export interface FaqItem {
 // visual effects, all admin editable. webgl ones need three/ogl and only run
 // on capable devices, so 'image' hero and 'dot' cursor stay the safe fallback.
 export type HeroBg = 'image' | 'pixel-blast' | 'threads' | 'liquid-chrome';
-export type CursorStyle = 'dot' | 'pixel-trail' | 'native';
+export type CursorStyle = 'dot' | 'pixel-trail' | 'target' | 'native';
 export interface SiteData {
   about: string; aboutRu?: string;
   telegram: string; github: string; email: string;

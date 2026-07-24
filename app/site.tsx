@@ -15,6 +15,7 @@ import { webglSupported } from '@/lib/fx';
 import HeroFx from '@/components/fx/HeroFx';
 import ShapeBlurFx from '@/components/fx/ShapeBlurFx';
 import PixelTrailCursor from '@/components/fx/PixelTrailCursor';
+import TargetCursorFx from '@/components/fx/TargetCursorFx';
 import HeadlineReveal from '@/components/fx/HeadlineReveal';
 import GradualBlur from '@/components/GradualBlur';
 
@@ -83,6 +84,7 @@ export default function Site({ initial }: { initial: SiteData }) {
   const cursorStyle = data.cursorStyle || 'dot';
   const dotOn = cursorStyle === 'dot' && customCursor;
   const trailOn = cursorStyle === 'pixel-trail' && fineOk;
+  const targetOn = cursorStyle === 'target' && fineOk;
   const fxCapable = webglOk && fineOk;
   const heroBg = data.heroBg || 'image';
   const heroFxOn = fxCapable && heroBg !== 'image';
@@ -770,6 +772,8 @@ export default function Site({ initial }: { initial: SiteData }) {
       {dotOn && <div ref={cursorRef} style={{ position: 'fixed', left: 0, top: 0, width: 9, height: 9, borderRadius: 99, background: '#f3f3f3', pointerEvents: 'none', zIndex: 9999, opacity: 0, transform: 'translate3d(-100px,-100px,0)', willChange: 'transform', transition: 'opacity .25s ease', mixBlendMode: 'difference' }} />}
       {/* pixel trail cursor (hand rolled, opt in via admin) */}
       {trailOn && <PixelTrailCursor />}
+      {/* target cursor: 4 corners lock onto links, buttons and cards */}
+      {targetOn && <TargetCursorFx />}
     </div>
   );
 }
