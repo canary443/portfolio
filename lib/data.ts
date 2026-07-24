@@ -26,16 +26,31 @@ export interface FaqItem {
 }
 // visual effects, all admin editable. webgl ones need three/ogl and only run
 // on capable devices, so 'image' hero and 'dot' cursor stay the safe fallback.
-export type HeroBg = 'image' | 'pixel-blast' | 'threads' | 'liquid-chrome';
+export type HeroBg = 'image' | 'pixel-blast' | 'dither' | 'threads' | 'liquid-chrome';
 export type CursorStyle = 'dot' | 'pixel-trail' | 'target' | 'native';
+// color presets for the hero background effects (pixel blast, dither, ...)
+export const HERO_PRESETS: { id: string; label: string; color: string }[] = [
+  { id: 'mono', label: 'Mono', color: '#8f8f8f' },
+  { id: 'lava', label: 'Lava', color: '#ff3b1f' },
+  { id: 'ember', label: 'Ember', color: '#ff7a18' },
+  { id: 'gold', label: 'Gold', color: '#ffb020' },
+  { id: 'toxic', label: 'Toxic', color: '#5dff3b' },
+  { id: 'mint', label: 'Mint', color: '#2ee6b0' },
+  { id: 'ocean', label: 'Ocean', color: '#22c5ff' },
+  { id: 'sky', label: 'Sky', color: '#3b82f6' },
+  { id: 'violet', label: 'Violet', color: '#8b5cf6' },
+  { id: 'magenta', label: 'Magenta', color: '#ff2bd4' },
+  { id: 'crimson', label: 'Crimson', color: '#e11d48' },
+  { id: 'ice', label: 'Ice', color: '#a8d8ff' }
+];
 export interface SiteData {
   about: string; aboutRu?: string;
   telegram: string; github: string; email: string;
   services: Service[]; works: Work[]; projects: TeamProject[]; faq: FaqItem[];
   // effects (flat fields so old saved data backfills from defaults)
-  heroBg?: HeroBg; cursorStyle?: CursorStyle;
+  heroBg?: HeroBg; heroPreset?: string; cursorStyle?: CursorStyle;
   fxGradualBlur?: boolean; fxHeadlineReveal?: boolean;
-  fxShapeBlur?: boolean; fxFluidGlass?: boolean; fxCardTilt?: boolean;
+  fxShapeBlur?: boolean; fxCardTilt?: boolean;
 }
 
 export const DEFAULTS: SiteData = {
@@ -45,11 +60,11 @@ export const DEFAULTS: SiteData = {
   github: 'canary443',
   email: 'contact@leet-cheats.xyz',
   heroBg: 'image',
+  heroPreset: 'mono',
   cursorStyle: 'dot',
   fxGradualBlur: true,
   fxHeadlineReveal: true,
   fxShapeBlur: false,
-  fxFluidGlass: false,
   fxCardTilt: false,
   services: [
     { id: 's1', glyph: '▤', icon: null, title: 'Sites', titleRu: 'Сайты', desc: 'Landings, portfolios, shops. Fast and clean.', descRu: 'Лендинги, портфолио, магазины. Быстро и аккуратно.' },

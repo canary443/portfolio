@@ -63,6 +63,8 @@ export default function Site({ initial }: { initial: SiteData }) {
   // effect gates set after mount: fine pointer + motion on, and real webgl support
   const [fineOk, setFineOk] = useState(false);
   const [webglOk, setWebglOk] = useState(false);
+  const [fxResolved, setFxResolved] = useState(false); // capability check has run
+  const [intro, setIntro] = useState(true); // short load cover to hide the first paint
 
   const cursorRef = useRef<HTMLDivElement>(null);
   const handsRef = useRef<HTMLImageElement>(null);
@@ -70,8 +72,8 @@ export default function Site({ initial }: { initial: SiteData }) {
   const lenisRef = useRef<Lenis | null>(null);
   const langRef = useRef<HTMLDivElement>(null);
   const modalOpen = useRef(false);
-  const toastT = useRef<ReturnType<typeof setTimeout>>();
-  const closeT = useRef<ReturnType<typeof setTimeout>>();
+  const toastT = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const closeT = useRef<ReturnType<typeof setTimeout>>(undefined);
   const fine = useRef(false);
   const reduced = useRef(false);
   // mirrors for the auto-advance timer, so it reads fresh values without resetting
@@ -88,10 +90,13 @@ export default function Site({ initial }: { initial: SiteData }) {
   const fxCapable = webglOk && fineOk;
   const heroBg = data.heroBg || 'image';
   const heroFxOn = fxCapable && heroBg !== 'image';
+  // show the hands only for the image mode, or as a fallback once we know webgl
+  // is not available - never during the brief window before that is resolved,
+  // so effect backgrounds do not flash the hands on load
+  const showImage = config.showMap && (heroBg === 'image' || (fxResolved && !fxCapable));
   const gradualOn = data.fxGradualBlur !== false;
   const headlineOn = data.fxHeadlineReveal !== false && motionOk;
   const shapeOn = fxCapable && !!data.fxShapeBlur;
-  const glassOn = !!data.fxFluidGlass;
   const tiltOn = !!data.fxCardTilt && fineOk;
 
   // detect input and browser once
@@ -108,6 +113,13 @@ export default function Site({ initial }: { initial: SiteData }) {
     setMotionOk(!reduced.current);
     setFineOk(fine.current && !reduced.current);
     setWebglOk(webglSupported());
+    setFxResolved(true);
+  }, []);
+
+  // fade the load cover out after the first paint (hides the hero swap flicker)
+  useEffect(() => {
+    const t = setTimeout(() => setIntro(false), 280);
+    return () => clearTimeout(t);
   }, []);
 
   // close the language menu on an outside click
@@ -404,17 +416,8 @@ export default function Site({ initial }: { initial: SiteData }) {
   });
 
   const sc = scrolled;
-  // blur only once the pill is up; lighter on webkit where it re-rasterizes per frame.
-  // glass mode keeps a stronger frosted blur on at all times (liquid glass look)
-  const navBlur = glassOn
-    ? (safari ? 'blur(13px) saturate(1.5)' : 'blur(22px) saturate(1.9)')
-    : (sc ? (safari ? 'blur(10px)' : 'blur(16px) saturate(1.6)') : 'none');
-  // glass mode adds a top highlight + soft inner sheen to the pill
-  const navShadow = [
-    sc ? '0 16px 48px rgba(0,0,0,.5)' : '',
-    glassOn ? 'inset 0 1px 0 rgba(255,255,255,.14)' : '',
-    glassOn ? 'inset 0 0 24px rgba(255,255,255,.045)' : ''
-  ].filter(Boolean).join(', ') || 'none';
+  // dark liquid glass once the pill is up; lighter blur on webkit (re-rasterizes per frame)
+  const navBlur = sc ? (safari ? 'blur(13px) saturate(1.5)' : 'blur(22px) saturate(1.9)') : 'none';
 
   return (
     <div className="site-page" data-custom-cursor={dotOn ? 'true' : undefined} style={{ minHeight: '100vh', overflowX: 'clip' }}>
@@ -423,10 +426,10 @@ export default function Site({ initial }: { initial: SiteData }) {
         <div style={{
           pointerEvents: 'auto', position: 'relative', display: 'flex', alignItems: 'center', gap: 12, width: '100%',
           maxWidth: sc ? 790 : 1256, height: sc ? 52 : 64, padding: '0 20px',
-          border: '1px solid ' + (sc || glassOn ? 'var(--nav-border)' : 'transparent'),
+          border: '1px solid ' + (sc ? 'var(--nav-border)' : 'transparent'),
           borderRadius: sc ? 9999 : 0, background: sc ? 'var(--nav-bg)' : 'var(--nav-bg-top)',
           backdropFilter: navBlur, WebkitBackdropFilter: navBlur,
-          boxShadow: navShadow,
+          boxShadow: sc ? '0 16px 48px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.14), inset 0 0 24px rgba(255,255,255,.045)' : 'none',
           transition: `max-width .6s ${EASE}, height .6s ${EASE}, border-radius .6s ${EASE}, background .45s ease, border-color .45s ease, box-shadow .45s ease`
         }}>
           <div onClick={goTop} style={{ fontSize: 16, letterSpacing: '-0.01em', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}>AimworkSpace</div>
@@ -452,16 +455,18 @@ export default function Site({ initial }: { initial: SiteData }) {
                 <img src="/images/flags/usa.svg" alt="" /><span>English</span>
               </div>
             </div>
+            {/* liquid glass reflection sweep on the language switcher */}
+            <span className="glass-sheen" aria-hidden />
           </div>
-          {/* glass reflection sweep (liquid glass) */}
-          {glassOn && <span className="glass-sheen" aria-hidden />}
+          {/* liquid glass reflection sweep on the round nav pill */}
+          {sc && <span className="glass-sheen" aria-hidden />}
         </div>
       </div>
 
       {/* hero (pinned, content slides over it) */}
       <div style={{ background: 'var(--hero-bg)', position: 'sticky', top: 0, zIndex: 1, overflow: 'hidden' }}>
         {/* webgl background, only on capable devices. plain image is the fallback */}
-        {heroFxOn && <HeroFx bg={heroBg} />}
+        {heroFxOn && <HeroFx bg={heroBg} preset={data.heroPreset} />}
         <div ref={heroRef} style={{ position: 'relative', zIndex: 1, maxWidth: 1200, margin: '0 auto', padding: '104px 28px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', transformOrigin: '50% 30%', willChange: reduced.current ? 'auto' : 'transform,opacity' }}>
           <h1 className="in0" style={{ margin: 0, fontSize: 'clamp(38px,5.2vw,60px)', fontWeight: 400, lineHeight: 1.05, letterSpacing: '-0.011em', maxWidth: '17ch', textWrap: 'balance' }}>{headlineOn ? <HeadlineReveal text={t.heroT} /> : t.heroT}</h1>
           <div className="in1" style={{ marginTop: 14, fontSize: 18, lineHeight: 1.4, color: 'var(--muted)', maxWidth: '46ch', textWrap: 'balance' }}>{t.heroSub}</div>
@@ -470,19 +475,15 @@ export default function Site({ initial }: { initial: SiteData }) {
             <a href="#projects" className="ghost">{t.view} ↓</a>
           </div>
         </div>
-        {heroFxOn ? (
-          // keep the hero tall so the animated background has room to breathe
-          <div style={{ height: 'clamp(300px,48vh,560px)' }} />
+        {showImage ? (
+          <div className="in3" style={{ position: 'relative', zIndex: 1, overflow: 'hidden', marginTop: 8 }}>
+            {/* avif is tiny but ios lockdown mode can not decode it. fall back to png on error */}
+            <img ref={handsRef} src="/assets/hero-hands.avif" alt="" fetchPriority="high" onError={e => { const im = e.currentTarget; if (!im.dataset.fb) { im.dataset.fb = '1'; im.src = '/assets/hero-hands.png'; } }} style={{ width: '114%', marginLeft: '-7%', display: 'block', transform: 'scale(1.06)', willChange: reduced.current ? 'auto' : 'transform' }} />
+          </div>
         ) : (
-          config.showMap && (
-            <div className="in3" style={{ position: 'relative', zIndex: 1, overflow: 'hidden', marginTop: 8 }}>
-              {/* avif is tiny but ios lockdown mode can not decode it. fall back to png on error */}
-              <img ref={handsRef} src="/assets/hero-hands.avif" alt="" fetchPriority="high" onError={e => { const im = e.currentTarget; if (!im.dataset.fb) { im.dataset.fb = '1'; im.src = '/assets/hero-hands.png'; } }} style={{ width: '114%', marginLeft: '-7%', display: 'block', transform: 'scale(1.06)', willChange: reduced.current ? 'auto' : 'transform' }} />
-            </div>
-          )
+          // effect background (or still resolving): keep the hero tall, stay dark
+          <div style={{ height: 'clamp(300px,48vh,560px)' }} />
         )}
-        {/* cinematic blur at the bottom seam where the sheet slides up */}
-        {gradualOn && <GradualBlur position="bottom" height="7rem" strength={2.2} divCount={5} curve="bezier" zIndex={2} style={{ pointerEvents: 'none' }} />}
       </div>
 
       {/* sheet that covers the hero */}
@@ -498,8 +499,8 @@ export default function Site({ initial }: { initial: SiteData }) {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1, border: '1px solid var(--line)', background: 'var(--line)' }}>
             {services.map((s, i) => {
               const on = revealAll || revealed['svc-' + s.id];
-              const Icon = SERVICE_ICONS[s.id as keyof typeof SERVICE_ICONS];
-              return (
+              const Icon = SERVICE_ICONS[s.id as keyof typeof SERVICE_ICONS] as (typeof SERVICE_ICONS)[keyof typeof SERVICE_ICONS] | undefined;
+              const svc = (
               <div key={s.id} data-reveal={'svc-' + s.id} className="svc"
                 onMouseMove={config.spotlight ? spotMove : undefined}
                 onMouseLeave={config.spotlight ? spotLeave : undefined}
@@ -508,12 +509,17 @@ export default function Site({ initial }: { initial: SiteData }) {
                 {s.icon
                   ? <img src={s.icon} loading="lazy" alt="" style={{ width: 26, height: 26, objectFit: 'contain', display: 'block' }} />
                   : Icon
-                    ? <AnimateIcon animate={on && motionOk} style={{ display: 'inline-flex', color: 'var(--icon)' }}><Icon size={26} aria-hidden /></AnimateIcon>
+                    ? <span style={{ display: 'inline-flex', color: 'var(--icon)' }}><Icon size={26} aria-hidden /></span>
                     : <div style={{ fontSize: 22, lineHeight: 1.2, color: 'var(--icon)' }}>{s.glyph}</div>}
                 <div style={{ marginTop: 20, fontSize: 14, letterSpacing: '.12em', textTransform: 'uppercase' }}>{s.title}</div>
                 <div style={{ marginTop: 10, fontSize: 14, lineHeight: 1.6, color: 'var(--muted)', maxWidth: '36ch' }}>{s.desc}</div>
               </div>
               );
+              // wrap the whole card so hovering it plays the icon once (no loop),
+              // and it also plays once when the card first scrolls into view
+              return Icon
+                ? <AnimateIcon key={s.id} asChild animate={on && motionOk} animateOnHover={motionOk}>{svc}</AnimateIcon>
+                : svc;
             })}
           </div>
         </div>
@@ -612,7 +618,7 @@ export default function Site({ initial }: { initial: SiteData }) {
 
         {/* about */}
         {config.showAbout && (
-          <div style={{ position: 'relative', isolation: 'isolate', maxWidth: 620, margin: '0 auto', padding: '120px 28px 0', textAlign: 'center' }}>
+          <div style={{ position: 'relative', isolation: 'isolate', overflow: 'hidden', maxWidth: 620, margin: '0 auto', padding: '120px 28px 0', textAlign: 'center' }}>
             {shapeOn && <ShapeBlurFx opacity={0.4} />}
             <div style={{ position: 'relative', zIndex: 1 }}>
             <div style={{ fontSize: 23 }}>{t.aboutH}</div>
@@ -770,10 +776,16 @@ export default function Site({ initial }: { initial: SiteData }) {
 
       {/* cursor dot: safari uses the native cursor to avoid frame lag */}
       {dotOn && <div ref={cursorRef} style={{ position: 'fixed', left: 0, top: 0, width: 9, height: 9, borderRadius: 99, background: '#f3f3f3', pointerEvents: 'none', zIndex: 9999, opacity: 0, transform: 'translate3d(-100px,-100px,0)', willChange: 'transform', transition: 'opacity .25s ease', mixBlendMode: 'difference' }} />}
-      {/* pixel trail cursor (hand rolled, opt in via admin) */}
+      {/* pixel trail cursor (real reactbits component, opt in via admin) */}
       {trailOn && <PixelTrailCursor />}
       {/* target cursor: 4 corners lock onto links, buttons and cards */}
       {targetOn && <TargetCursorFx />}
+
+      {/* cinematic gradual blur at the bottom edge of the viewport */}
+      {gradualOn && <GradualBlur target="page" position="bottom" height="6rem" strength={2} divCount={6} curve="bezier" />}
+
+      {/* short load cover: fades out to hide the first paint and hero swap flicker */}
+      <div aria-hidden style={{ position: 'fixed', inset: 0, zIndex: 99999, background: 'var(--bg)', opacity: intro ? 1 : 0, transition: 'opacity .38s ease', pointerEvents: 'none' }} />
     </div>
   );
 }

@@ -81,12 +81,12 @@ const Slot = React.forwardRef<HTMLElement, Omit<SlotProps, 'ref'>>(function Slot
 
   const mergedProps = mergeProps(childProps, props);
 
-  return (
-    <Base
-      {...mergedProps}
-      ref={mergeRefs(childRef as React.Ref<HTMLElement>, ref)}
-    />
-  );
+  // react 19 types the ref prop on a dynamic element as never, so build the
+  // element imperatively and pass the merged ref through
+  return React.createElement(Base, {
+    ...mergedProps,
+    ref: mergeRefs(childRef as React.Ref<HTMLElement>, ref),
+  } as AnyProps);
 });
 
 export {

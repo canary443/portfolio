@@ -4,19 +4,18 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   loadData, saveData, resetData, loadRemote, saveRemote, DEFAULTS,
-  SiteData, Service, Work, TeamProject, FaqItem, LogEntry, HeroBg, CursorStyle
+  SiteData, Service, Work, TeamProject, FaqItem, LogEntry, HeroBg, CursorStyle, HERO_PRESETS
 } from '@/lib/data';
 import { shrinkImage, dataUrlKb } from '@/lib/img';
 
 // effect controls, rendered in the settings page
-type FxKey = 'fxGradualBlur' | 'fxHeadlineReveal' | 'fxShapeBlur' | 'fxFluidGlass' | 'fxCardTilt';
-const HERO_BG_OPTS: [HeroBg, string][] = [['image', 'Image (hands)'], ['pixel-blast', 'Pixel blast'], ['threads', 'Threads'], ['liquid-chrome', 'Liquid chrome']];
+type FxKey = 'fxGradualBlur' | 'fxHeadlineReveal' | 'fxShapeBlur' | 'fxCardTilt';
+const HERO_BG_OPTS: [HeroBg, string][] = [['image', 'Image (hands)'], ['pixel-blast', 'Pixel blast'], ['dither', 'Dither'], ['threads', 'Threads'], ['liquid-chrome', 'Liquid chrome']];
 const CURSOR_OPTS: [CursorStyle, string][] = [['dot', 'Dot'], ['pixel-trail', 'Pixel trail'], ['target', 'Target'], ['native', 'Native']];
 const FX_TOGGLES: [FxKey, string, boolean][] = [
   ['fxGradualBlur', 'Gradual blur seams', true],
   ['fxHeadlineReveal', 'Hero headline reveal', true],
   ['fxShapeBlur', 'Shape blur behind about', false],
-  ['fxFluidGlass', 'Liquid glass nav', false],
   ['fxCardTilt', 'Project card tilt', false]
 ];
 
@@ -36,7 +35,7 @@ const SECTION_KEYS: Partial<Record<Sec, (keyof SiteData)[]>> = {
   works: ['works'],
   projects: ['projects'],
   faq: ['faq'],
-  settings: ['telegram', 'github', 'email', 'heroBg', 'cursorStyle', 'fxGradualBlur', 'fxHeadlineReveal', 'fxShapeBlur', 'fxFluidGlass', 'fxCardTilt']
+  settings: ['telegram', 'github', 'email', 'heroBg', 'heroPreset', 'cursorStyle', 'fxGradualBlur', 'fxHeadlineReveal', 'fxShapeBlur', 'fxCardTilt']
 };
 
 export default function Admin() {
@@ -59,7 +58,7 @@ export default function Admin() {
   const [confirmReset, setConfirmReset] = useState(false);
   const [device, setDevice] = useState<'desktop' | 'mobile'>('desktop');
 
-  const flashT = useRef<ReturnType<typeof setTimeout>>();
+  const flashT = useRef<ReturnType<typeof setTimeout>>(undefined);
   const aboutRef = useRef<HTMLTextAreaElement>(null);
   const drag = useRef<{ list: keyof SiteData; id: string } | null>(null);
   const busy = useRef(false);
@@ -613,6 +612,16 @@ export default function Admin() {
                   {HERO_BG_OPTS.map(([val, label]) => {
                     const active = (data.heroBg || 'image') === val;
                     return <span key={val} className="aghost" style={{ padding: '6px 14px', fontSize: 13, borderColor: active ? '#474747' : '#2a2a2a', color: active ? '#f3f3f3' : '#9c9c9c' }} onClick={() => persist({ ...data, heroBg: val })}>{label}</span>;
+                  })}
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '10px 0' }}>
+                <span style={{ fontSize: 14, width: 150, paddingTop: 6 }}>Background color</span>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {HERO_PRESETS.map(p => {
+                    const active = (data.heroPreset || 'mono') === p.id;
+                    return <span key={p.id} className="aghost" style={{ padding: '6px 12px', fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 7, borderColor: active ? '#474747' : '#2a2a2a', color: active ? '#f3f3f3' : '#9c9c9c' }} onClick={() => persist({ ...data, heroPreset: p.id })}><span style={{ width: 10, height: 10, borderRadius: 99, background: p.color, display: 'inline-block', boxShadow: '0 0 0 1px rgba(255,255,255,.12)' }} />{p.label}</span>;
                   })}
                 </div>
               </div>
