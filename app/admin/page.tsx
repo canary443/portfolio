@@ -4,9 +4,21 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   loadData, saveData, resetData, loadRemote, saveRemote, DEFAULTS,
-  SiteData, Service, Work, TeamProject, FaqItem, LogEntry
+  SiteData, Service, Work, TeamProject, FaqItem, LogEntry, HeroBg, CursorStyle
 } from '@/lib/data';
 import { shrinkImage, dataUrlKb } from '@/lib/img';
+
+// effect controls, rendered in the settings page
+type FxKey = 'fxGradualBlur' | 'fxHeadlineReveal' | 'fxShapeBlur' | 'fxFluidGlass' | 'fxCardTilt';
+const HERO_BG_OPTS: [HeroBg, string][] = [['image', 'Image (hands)'], ['pixel-blast', 'Pixel blast'], ['threads', 'Threads'], ['liquid-chrome', 'Liquid chrome']];
+const CURSOR_OPTS: [CursorStyle, string][] = [['dot', 'Dot'], ['pixel-trail', 'Pixel trail'], ['native', 'Native']];
+const FX_TOGGLES: [FxKey, string, boolean][] = [
+  ['fxGradualBlur', 'Gradual blur seams', true],
+  ['fxHeadlineReveal', 'Hero headline reveal', true],
+  ['fxShapeBlur', 'Shape blur behind about', false],
+  ['fxFluidGlass', 'Liquid glass nav', false],
+  ['fxCardTilt', 'Project card tilt', false]
+];
 
 type Sec = 'about' | 'services' | 'works' | 'projects' | 'faq' | 'settings' | 'preview';
 type Form = Record<string, string>;
@@ -24,7 +36,7 @@ const SECTION_KEYS: Partial<Record<Sec, (keyof SiteData)[]>> = {
   works: ['works'],
   projects: ['projects'],
   faq: ['faq'],
-  settings: ['telegram', 'github', 'email']
+  settings: ['telegram', 'github', 'email', 'heroBg', 'cursorStyle', 'fxGradualBlur', 'fxHeadlineReveal', 'fxShapeBlur', 'fxFluidGlass', 'fxCardTilt']
 };
 
 export default function Admin() {
@@ -589,6 +601,45 @@ export default function Admin() {
                 <span className="abtn" onClick={() => persist({ ...data, telegram: F('telegram').trim().replace(/^@/, ''), github: F('github').trim(), email: F('email').trim() })}>Save</span>
               </div>
             </div>
+
+            {/* effects: saved on click, no separate save button */}
+            <div style={{ marginTop: 40, borderTop: '1px solid #212121', paddingTop: 20, maxWidth: 640 }}>
+              <div style={{ fontSize: 16 }}>Effects</div>
+              <div style={{ margin: '4px 0 18px', fontSize: 13, color: '#9c9c9c', lineHeight: 1.6 }}>Fancy visuals, saved as you click. The heavy ones (hero background, shape blur) only run on desktop with motion on - phones, Safari lockdown and reduced-motion always fall back to the plain look.</div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0' }}>
+                <span style={{ fontSize: 14, width: 150 }}>Hero background</span>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {HERO_BG_OPTS.map(([val, label]) => {
+                    const active = (data.heroBg || 'image') === val;
+                    return <span key={val} className="aghost" style={{ padding: '6px 14px', fontSize: 13, borderColor: active ? '#474747' : '#2a2a2a', color: active ? '#f3f3f3' : '#9c9c9c' }} onClick={() => persist({ ...data, heroBg: val })}>{label}</span>;
+                  })}
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0' }}>
+                <span style={{ fontSize: 14, width: 150 }}>Cursor</span>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {CURSOR_OPTS.map(([val, label]) => {
+                    const active = (data.cursorStyle || 'dot') === val;
+                    return <span key={val} className="aghost" style={{ padding: '6px 14px', fontSize: 13, borderColor: active ? '#474747' : '#2a2a2a', color: active ? '#f3f3f3' : '#9c9c9c' }} onClick={() => persist({ ...data, cursorStyle: val })}>{label}</span>;
+                  })}
+                </div>
+              </div>
+
+              <div style={{ marginTop: 8, borderTop: '1px solid #1a1a1a' }}>
+                {FX_TOGGLES.map(([key, label, def]) => {
+                  const on = data[key] === undefined ? def : !!data[key];
+                  return (
+                    <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: '1px solid #1a1a1a' }}>
+                      <span style={{ fontSize: 14, flex: 1 }}>{label}</span>
+                      <span className="aghost" style={{ padding: '6px 18px', fontSize: 13, borderColor: on ? '#474747' : '#2a2a2a', color: on ? '#f3f3f3' : '#9c9c9c' }} onClick={() => persist({ ...data, [key]: !on })}>{on ? 'On' : 'Off'}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
             <div style={{ marginTop: 40, borderTop: '1px solid #212121', paddingTop: 20 }}>
               <div style={{ fontSize: 13, color: '#ff6b6b', marginBottom: 12, opacity: .8 }}>Danger zone</div>
               <span onClick={() => {

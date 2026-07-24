@@ -11,6 +11,12 @@ import { Binary } from '@/components/animate-ui/icons/binary';
 import { loadRemote, fetchRub, SiteData, LogEntry } from '@/lib/data';
 import { T, Lang } from '@/lib/i18n';
 import { config } from '@/lib/config';
+import { webglSupported } from '@/lib/fx';
+import HeroFx from '@/components/fx/HeroFx';
+import ShapeBlurFx from '@/components/fx/ShapeBlurFx';
+import PixelTrailCursor from '@/components/fx/PixelTrailCursor';
+import HeadlineReveal from '@/components/fx/HeadlineReveal';
+import GradualBlur from '@/components/GradualBlur';
 
 // one slide of a card carousel: video or photo
 interface Media { kind: 'video' | 'img'; src: string }
@@ -53,6 +59,9 @@ export default function Site({ initial }: { initial: SiteData }) {
   const [customCursor, setCustomCursor] = useState(false);
   const [motionOk, setMotionOk] = useState(true);
   const [langOpen, setLangOpen] = useState(false);
+  // effect gates set after mount: fine pointer + motion on, and real webgl support
+  const [fineOk, setFineOk] = useState(false);
+  const [webglOk, setWebglOk] = useState(false);
 
   const cursorRef = useRef<HTMLDivElement>(null);
   const handsRef = useRef<HTMLImageElement>(null);
@@ -69,6 +78,20 @@ export default function Site({ initial }: { initial: SiteData }) {
   const itemsRef = useRef<Item[]>([]);
   cardPicRef.current = cardPic;
 
+  // which effects are on. webgl and the pixel trail need a fine pointer with
+  // motion allowed, so touch, reduced-motion and no-webgl fall back to plain ui
+  const cursorStyle = data.cursorStyle || 'dot';
+  const dotOn = cursorStyle === 'dot' && customCursor;
+  const trailOn = cursorStyle === 'pixel-trail' && fineOk;
+  const fxCapable = webglOk && fineOk;
+  const heroBg = data.heroBg || 'image';
+  const heroFxOn = fxCapable && heroBg !== 'image';
+  const gradualOn = data.fxGradualBlur !== false;
+  const headlineOn = data.fxHeadlineReveal !== false && motionOk;
+  const shapeOn = fxCapable && !!data.fxShapeBlur;
+  const glassOn = !!data.fxFluidGlass;
+  const tiltOn = !!data.fxCardTilt && fineOk;
+
   // detect input and browser once
   useEffect(() => {
     fine.current = window.matchMedia('(pointer:fine)').matches;
@@ -81,6 +104,8 @@ export default function Site({ initial }: { initial: SiteData }) {
     setSafari(isSafari);
     setCustomCursor(!isSafari && fine.current && !reduced.current);
     setMotionOk(!reduced.current);
+    setFineOk(fine.current && !reduced.current);
+    setWebglOk(webglSupported());
   }, []);
 
   // close the language menu on an outside click
@@ -173,7 +198,7 @@ export default function Site({ initial }: { initial: SiteData }) {
 
   // cursor dot: lerped follow, loop sleeps when settled
   useEffect(() => {
-    if (!customCursor) return;
+    if (!dotOn) return;
     let mx = -100, my = -100, tx = -100, ty = -100, cs = 1, ts = 1, raf = 0, on = false, last = 0;
     // time-based lerp so the trail feels the same at 60hz (safari) and 120hz
     const loop = (now: number) => {
@@ -200,7 +225,7 @@ export default function Site({ initial }: { initial: SiteData }) {
       document.documentElement.removeEventListener('mouseleave', onLeave);
       cancelAnimationFrame(raf);
     };
-  }, [customCursor]);
+  }, [dotOn]);
 
   // reveal cards on scroll; re-observes when data changes so items added
   // via the focus reload also animate in
@@ -294,6 +319,18 @@ export default function Site({ initial }: { initial: SiteData }) {
     e.currentTarget.style.setProperty('--mx', '-300px');
     e.currentTarget.style.setProperty('--my', '-300px');
   };
+  // subtle 3d tilt that follows the pointer. .card already eases transform,
+  // so the tilt trails smoothly. reset on leave springs it back flat.
+  const tiltMove = (e: React.MouseEvent<HTMLElement>) => {
+    const el = e.currentTarget, r = el.getBoundingClientRect();
+    const px = (e.clientX - r.left) / r.width - 0.5;
+    const py = (e.clientY - r.top) / r.height - 0.5;
+    el.style.transform = `perspective(900px) rotateX(${(-py * 5).toFixed(2)}deg) rotateY(${(px * 7).toFixed(2)}deg) translateY(-3px)`;
+  };
+  const tiltLeave = (e: React.MouseEvent<HTMLElement>) => { e.currentTarget.style.transform = ''; };
+  // project cards can run spotlight and tilt at the same time
+  const cardMove = (e: React.MouseEvent<HTMLElement>) => { if (config.spotlight) spotMove(e); if (tiltOn) tiltMove(e); };
+  const cardLeave = (e: React.MouseEvent<HTMLElement>) => { if (config.spotlight) spotLeave(e); if (tiltOn) tiltLeave(e); };
   const goTop = () => {
     if (lenisRef.current) lenisRef.current.scrollTo(0);
     else window.scrollTo({ top: 0, behavior: reduced.current ? 'auto' : 'smooth' });
@@ -365,20 +402,29 @@ export default function Site({ initial }: { initial: SiteData }) {
   });
 
   const sc = scrolled;
-  // blur only once the pill is up; lighter on webkit where it re-rasterizes per frame
-  const navBlur = sc ? (safari ? 'blur(10px)' : 'blur(16px) saturate(1.6)') : 'none';
+  // blur only once the pill is up; lighter on webkit where it re-rasterizes per frame.
+  // glass mode keeps a stronger frosted blur on at all times (liquid glass look)
+  const navBlur = glassOn
+    ? (safari ? 'blur(13px) saturate(1.5)' : 'blur(22px) saturate(1.9)')
+    : (sc ? (safari ? 'blur(10px)' : 'blur(16px) saturate(1.6)') : 'none');
+  // glass mode adds a top highlight + soft inner sheen to the pill
+  const navShadow = [
+    sc ? '0 16px 48px rgba(0,0,0,.5)' : '',
+    glassOn ? 'inset 0 1px 0 rgba(255,255,255,.14)' : '',
+    glassOn ? 'inset 0 0 24px rgba(255,255,255,.045)' : ''
+  ].filter(Boolean).join(', ') || 'none';
 
   return (
-    <div className="site-page" data-custom-cursor={customCursor ? 'true' : undefined} style={{ minHeight: '100vh', overflowX: 'clip' }}>
+    <div className="site-page" data-custom-cursor={dotOn ? 'true' : undefined} style={{ minHeight: '100vh', overflowX: 'clip' }}>
       {/* nav */}
       <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100, display: 'flex', justifyContent: 'center', padding: sc ? '12px 16px 0' : '0px', transition: 'padding .6s ' + EASE, pointerEvents: 'none' }}>
         <div style={{
           pointerEvents: 'auto', position: 'relative', display: 'flex', alignItems: 'center', gap: 12, width: '100%',
           maxWidth: sc ? 790 : 1256, height: sc ? 52 : 64, padding: '0 20px',
-          border: '1px solid ' + (sc ? 'var(--nav-border)' : 'transparent'),
+          border: '1px solid ' + (sc || glassOn ? 'var(--nav-border)' : 'transparent'),
           borderRadius: sc ? 9999 : 0, background: sc ? 'var(--nav-bg)' : 'var(--nav-bg-top)',
           backdropFilter: navBlur, WebkitBackdropFilter: navBlur,
-          boxShadow: sc ? '0 16px 48px rgba(0,0,0,.5)' : 'none',
+          boxShadow: navShadow,
           transition: `max-width .6s ${EASE}, height .6s ${EASE}, border-radius .6s ${EASE}, background .45s ease, border-color .45s ease, box-shadow .45s ease`
         }}>
           <div onClick={goTop} style={{ fontSize: 16, letterSpacing: '-0.01em', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}>AimworkSpace</div>
@@ -405,25 +451,36 @@ export default function Site({ initial }: { initial: SiteData }) {
               </div>
             </div>
           </div>
+          {/* glass reflection sweep (liquid glass) */}
+          {glassOn && <span className="glass-sheen" aria-hidden />}
         </div>
       </div>
 
       {/* hero (pinned, content slides over it) */}
       <div style={{ background: 'var(--hero-bg)', position: 'sticky', top: 0, zIndex: 1, overflow: 'hidden' }}>
-        <div ref={heroRef} style={{ maxWidth: 1200, margin: '0 auto', padding: '104px 28px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', transformOrigin: '50% 30%', willChange: reduced.current ? 'auto' : 'transform,opacity' }}>
-          <h1 className="in0" style={{ margin: 0, fontSize: 'clamp(38px,5.2vw,60px)', fontWeight: 400, lineHeight: 1.05, letterSpacing: '-0.011em', maxWidth: '17ch', textWrap: 'balance' }}>{t.heroT}</h1>
+        {/* webgl background, only on capable devices. plain image is the fallback */}
+        {heroFxOn && <HeroFx bg={heroBg} />}
+        <div ref={heroRef} style={{ position: 'relative', zIndex: 1, maxWidth: 1200, margin: '0 auto', padding: '104px 28px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', transformOrigin: '50% 30%', willChange: reduced.current ? 'auto' : 'transform,opacity' }}>
+          <h1 className="in0" style={{ margin: 0, fontSize: 'clamp(38px,5.2vw,60px)', fontWeight: 400, lineHeight: 1.05, letterSpacing: '-0.011em', maxWidth: '17ch', textWrap: 'balance' }}>{headlineOn ? <HeadlineReveal text={t.heroT} /> : t.heroT}</h1>
           <div className="in1" style={{ marginTop: 14, fontSize: 18, lineHeight: 1.4, color: 'var(--muted)', maxWidth: '46ch', textWrap: 'balance' }}>{t.heroSub}</div>
           <div className="in2" style={{ display: 'flex', gap: 12, marginTop: 24 }}>
             <a href={tgHref} target="_blank" className="pill">{t.start} ↗</a>
             <a href="#projects" className="ghost">{t.view} ↓</a>
           </div>
         </div>
-        {config.showMap && (
-          <div className="in3" style={{ overflow: 'hidden', marginTop: 8 }}>
-            {/* avif is tiny but ios lockdown mode can not decode it. fall back to png on error */}
-            <img ref={handsRef} src="/assets/hero-hands.avif" alt="" fetchPriority="high" onError={e => { const im = e.currentTarget; if (!im.dataset.fb) { im.dataset.fb = '1'; im.src = '/assets/hero-hands.png'; } }} style={{ width: '114%', marginLeft: '-7%', display: 'block', transform: 'scale(1.06)', willChange: reduced.current ? 'auto' : 'transform' }} />
-          </div>
+        {heroFxOn ? (
+          // keep the hero tall so the animated background has room to breathe
+          <div style={{ height: 'clamp(300px,48vh,560px)' }} />
+        ) : (
+          config.showMap && (
+            <div className="in3" style={{ position: 'relative', zIndex: 1, overflow: 'hidden', marginTop: 8 }}>
+              {/* avif is tiny but ios lockdown mode can not decode it. fall back to png on error */}
+              <img ref={handsRef} src="/assets/hero-hands.avif" alt="" fetchPriority="high" onError={e => { const im = e.currentTarget; if (!im.dataset.fb) { im.dataset.fb = '1'; im.src = '/assets/hero-hands.png'; } }} style={{ width: '114%', marginLeft: '-7%', display: 'block', transform: 'scale(1.06)', willChange: reduced.current ? 'auto' : 'transform' }} />
+            </div>
+          )
         )}
+        {/* cinematic blur at the bottom seam where the sheet slides up */}
+        {gradualOn && <GradualBlur position="bottom" height="7rem" strength={2.2} divCount={5} curve="bezier" zIndex={2} style={{ pointerEvents: 'none' }} />}
       </div>
 
       {/* sheet that covers the hero */}
@@ -449,7 +506,7 @@ export default function Site({ initial }: { initial: SiteData }) {
                 {s.icon
                   ? <img src={s.icon} loading="lazy" alt="" style={{ width: 26, height: 26, objectFit: 'contain', display: 'block' }} />
                   : Icon
-                    ? <AnimateIcon animateOnView={motionOk} animateOnViewOnce style={{ display: 'inline-flex', color: 'var(--icon)' }}><Icon size={26} aria-hidden /></AnimateIcon>
+                    ? <AnimateIcon animate={on && motionOk} style={{ display: 'inline-flex', color: 'var(--icon)' }}><Icon size={26} aria-hidden /></AnimateIcon>
                     : <div style={{ fontSize: 22, lineHeight: 1.2, color: 'var(--icon)' }}>{s.glyph}</div>}
                 <div style={{ marginTop: 20, fontSize: 14, letterSpacing: '.12em', textTransform: 'uppercase' }}>{s.title}</div>
                 <div style={{ marginTop: 10, fontSize: 14, lineHeight: 1.6, color: 'var(--muted)', maxWidth: '36ch' }}>{s.desc}</div>
@@ -490,9 +547,9 @@ export default function Site({ initial }: { initial: SiteData }) {
               return (
                 <a key={w.id} data-card={w.id} data-reveal={w.id} className="card"
                   onClick={() => openModal(w, ci)}
-                  onMouseMove={config.spotlight ? spotMove : undefined}
-                  onMouseLeave={config.spotlight ? spotLeave : undefined}
-                  style={{ opacity: on ? 1 : 0, transform: on ? undefined : `translate3d(${i % 2 ? 36 : -36}px,0,0)` }}>
+                  onMouseMove={config.spotlight || tiltOn ? cardMove : undefined}
+                  onMouseLeave={config.spotlight || tiltOn ? cardLeave : undefined}
+                  style={{ opacity: on ? 1 : 0, transform: on ? undefined : `translate3d(${i % 2 ? 36 : -36}px,0,0)`, transformStyle: tiltOn ? 'preserve-3d' : undefined }}>
                   {config.spotlight && <span style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 2, background: 'radial-gradient(280px circle at var(--mx,-300px) var(--my,-300px),var(--spot),transparent 65%)' }} />}
                   {cur ? (
                     <span style={{ position: 'relative', display: 'block', aspectRatio: '16/10', borderBottom: '1px solid var(--line)', overflow: 'hidden' }}>
@@ -553,7 +610,9 @@ export default function Site({ initial }: { initial: SiteData }) {
 
         {/* about */}
         {config.showAbout && (
-          <div style={{ maxWidth: 620, margin: '0 auto', padding: '120px 28px 0', textAlign: 'center' }}>
+          <div style={{ position: 'relative', isolation: 'isolate', maxWidth: 620, margin: '0 auto', padding: '120px 28px 0', textAlign: 'center' }}>
+            {shapeOn && <ShapeBlurFx opacity={0.4} />}
+            <div style={{ position: 'relative', zIndex: 1 }}>
             <div style={{ fontSize: 23 }}>{t.aboutH}</div>
             <div style={{ marginTop: 16, fontSize: 16, lineHeight: 1.65, color: 'var(--muted)' }}>{renderAbout(aboutText)}</div>
             <div style={{ marginTop: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, flexWrap: 'wrap' }}>
@@ -565,6 +624,7 @@ export default function Site({ initial }: { initial: SiteData }) {
                 </span>
                 {t.based}
               </span>
+            </div>
             </div>
           </div>
         )}
@@ -707,7 +767,9 @@ export default function Site({ initial }: { initial: SiteData }) {
       </div>
 
       {/* cursor dot: safari uses the native cursor to avoid frame lag */}
-      {customCursor && <div ref={cursorRef} style={{ position: 'fixed', left: 0, top: 0, width: 9, height: 9, borderRadius: 99, background: '#f3f3f3', pointerEvents: 'none', zIndex: 9999, opacity: 0, transform: 'translate3d(-100px,-100px,0)', willChange: 'transform', transition: 'opacity .25s ease', mixBlendMode: 'difference' }} />}
+      {dotOn && <div ref={cursorRef} style={{ position: 'fixed', left: 0, top: 0, width: 9, height: 9, borderRadius: 99, background: '#f3f3f3', pointerEvents: 'none', zIndex: 9999, opacity: 0, transform: 'translate3d(-100px,-100px,0)', willChange: 'transform', transition: 'opacity .25s ease', mixBlendMode: 'difference' }} />}
+      {/* pixel trail cursor (hand rolled, opt in via admin) */}
+      {trailOn && <PixelTrailCursor />}
     </div>
   );
 }

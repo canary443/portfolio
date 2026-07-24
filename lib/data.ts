@@ -24,10 +24,18 @@ export interface TeamProject {
 export interface FaqItem {
   id: string; q: string; qRu?: string; a: string; aRu?: string;
 }
+// visual effects, all admin editable. webgl ones need three/ogl and only run
+// on capable devices, so 'image' hero and 'dot' cursor stay the safe fallback.
+export type HeroBg = 'image' | 'pixel-blast' | 'threads' | 'liquid-chrome';
+export type CursorStyle = 'dot' | 'pixel-trail' | 'native';
 export interface SiteData {
   about: string; aboutRu?: string;
   telegram: string; github: string; email: string;
   services: Service[]; works: Work[]; projects: TeamProject[]; faq: FaqItem[];
+  // effects (flat fields so old saved data backfills from defaults)
+  heroBg?: HeroBg; cursorStyle?: CursorStyle;
+  fxGradualBlur?: boolean; fxHeadlineReveal?: boolean;
+  fxShapeBlur?: boolean; fxFluidGlass?: boolean; fxCardTilt?: boolean;
 }
 
 export const DEFAULTS: SiteData = {
@@ -36,6 +44,13 @@ export const DEFAULTS: SiteData = {
   telegram: 'sickbuddy',
   github: 'canary443',
   email: 'contact@leet-cheats.xyz',
+  heroBg: 'image',
+  cursorStyle: 'dot',
+  fxGradualBlur: true,
+  fxHeadlineReveal: true,
+  fxShapeBlur: false,
+  fxFluidGlass: false,
+  fxCardTilt: false,
   services: [
     { id: 's1', glyph: '▤', icon: null, title: 'Sites', titleRu: 'Сайты', desc: 'Landings, portfolios, shops. Fast and clean.', descRu: 'Лендинги, портфолио, магазины. Быстро и аккуратно.' },
     { id: 's2', glyph: '◉', icon: null, title: 'Bots', titleRu: 'Боты', desc: 'Telegram bots: shops, monitors, payments, alerts.', descRu: 'Телеграм-боты: магазины, мониторинги, оплата, уведомления.' },

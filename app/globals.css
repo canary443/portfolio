@@ -68,6 +68,11 @@ a:hover { color: var(--text-strong); }
   .site-page[data-custom-cursor="true"] * { cursor: none !important; }
 }
 
+/* liquid glass: a slow reflection sweep across the nav pill */
+.glass-sheen { position: absolute; inset: 0; border-radius: inherit; overflow: hidden; pointer-events: none; z-index: 1; }
+.glass-sheen::before { content: ""; position: absolute; top: 0; left: -60%; width: 45%; height: 100%; background: linear-gradient(105deg, transparent, rgba(255,255,255,.09), transparent); transform: skewX(-18deg); animation: zxsheen 7s ease-in-out infinite; }
+@keyframes zxsheen { 0% { left: -60%; } 55%, 100% { left: 130%; } }
+
 /* hover states (inline styles cannot do :hover) */
 .navlnk { color: var(--muted); text-decoration: none; transition: color .15s ease; }
 .navlnk:hover { color: var(--text); }
@@ -145,4 +150,5 @@ a:hover { color: var(--text-strong); }
   .card { transition: border-color .2s ease, opacity .3s ease; }
   .svc { transition: background .25s ease, opacity .3s ease; }
   .partner, .pill, .ghost { transition-property: opacity, background, border-color, color; }
+  .glass-sheen::before { animation: none; }
 }
