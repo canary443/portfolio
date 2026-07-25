@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
+import { pickLang } from '@/lib/lang';
 import { Analytics } from '@vercel/analytics/next';
 import './globals.css';
 import './fonts.css';
@@ -64,8 +65,10 @@ export const viewport: Viewport = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  // saved language, so the server paints the right one (no flash of english)
-  const lang = (await cookies()).get('zx_lang')?.value === 'ru' ? 'ru' : 'en';
+  // same pick as the page: saved choice first, else what the browser asks for,
+  // so <html lang> never disagrees with the text on screen
+  const [jar, head] = await Promise.all([cookies(), headers()]);
+  const lang = pickLang(jar.get('zx_lang')?.value, head.get('accept-language'));
   return (
     <html lang={lang}>
       <head>
