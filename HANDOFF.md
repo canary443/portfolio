@@ -57,3 +57,64 @@ Replace `loadData`/`saveData` in `lib/data.ts` with API calls (public read can s
 
 ## Nice-to-have after launch
 - OG image + meta per locale; sitemap; analytics (Plausible or Vercel Analytics); uptime ping for the admin.
+
+## Site audit (2026-07-25) - improvement backlog
+
+Full review of `app/site.tsx`, `app/globals.css`, `lib/data.ts`, `lib/i18n.ts`, `app/layout.tsx`,
+`components/MediaCarousel.tsx`. Motion and visual craft are already solid (reduced-motion handled
+everywhere, Safari branches, stagger, `:active` press states, exit faster than entry, SSR content
+with no flash). The real leverage is in the five areas below.
+
+### 1. Content (highest leverage, not code)
+Default work cards still show "NO PIC" placeholders and an unnamed team project with no links.
+No real screenshots/video or client quotes will outweigh any code change below. Add real media per
+work item, and consider a short client-quote field per card or in the modal.
+
+### 2. Accessibility - keyboard nav is largely broken
+Most interactive elements are `div`/`span` with `onClick`, unreachable by keyboard/screen reader:
+
+| Location | Problem | Fix |
+| --- | --- | --- |
+| FAQ rows, `app/site.tsx:655` | `div onClick`, not focusable | `<button>` + `aria-expanded` |
+| Project cards, `app/site.tsx:561` | `<a>` with no `href` when `link` is empty - never focusable | render as `<button>`, or keep `href` and guard the click handler |
+| Language switcher, `app/site.tsx:436` | `div onClick`, no `aria-expanded`, no Escape handling | convert to `<button>` + keydown handler |
+| Modal, `app/site.tsx:712` | no `role="dialog"`, `aria-modal`, focus trap, or focus return on close (Escape-to-close already works) | add the missing ARIA + focus management |
+| Modal close / email-copy, `app/site.tsx:746` and `:687` | `span onClick` | `<button>` |
+| Carousel arrows, `components/MediaCarousel.tsx:101` | `role="button"` but no `tabIndex`/Enter handling | use real `<button>` elements |
+| Toast, `app/site.tsx:761` | screen readers never announce "copied" | add `aria-live="polite"` |
+
+Roughly an evening of work; would also clear the Lighthouse Accessibility score.
+
+### 3. External CDN dependency (relevant for the RU audience)
+- Every stack/social icon, including the icon inside the primary CTA button, loads from
+  `cdn.simpleicons.org` at runtime. Third-party CDNs are frequently slow or blocked from Russia -
+  inline the SVGs or serve them from `public/`.
+- Fonts: two blocking stylesheet requests (Fontshare + Google Fonts) in `app/layout.tsx:38-40`, and
+  **all three** Cyrillic font families (Onest/Carlito/Jost) load even though only one (`fontRu`) is
+  ever active. Google Fonts is also unreliable from Russia. Self-host via `next/font/local` to drop
+  both the render-blocking request and the CDN dependency.
+
+### 4. SEO - cheap wins currently missing
+- No `robots.txt` / `sitemap.xml` (trivial to add as files under `app/`).
+- No JSON-LD (`Person`/`ProfessionalService` with services + price range).
+- No `hreflang` alternates between the `en`/`ru` versions.
+- OG description in `app/layout.tsx:12` ("@aimwork portfolio") undersells the pitch - Telegram
+  sharing is a primary channel for this site. Something like "Sites, bots and automation. 3-14
+  days, reply within 24h" converts better on a link preview card.
+
+### 5. Performance / infra
+- No analytics at all - can't see scroll depth or CTA click-through. `@vercel/analytics` is a
+  one-line add to `app/layout.tsx`.
+- `app/page.tsx:8` is `force-dynamic`, so every visit round-trips to Blob storage. Switch to ISR
+  (`revalidate`) or call `revalidateTag` from the `/api/content` PUT handler to cut TTFB.
+- Hero art has no reserved aspect ratio, so it causes a layout shift while it loads - give the
+  container a fixed `aspect-ratio`. The ascii-cat PNG fallback is 644KB; the AVIF (284KB) is fine.
+- Media is still base64-inlined inside `site.json` (known 4MB PUT limit, see the media note in
+  CLAUDE.md) - continue the move to `aimworkspace-media` Supabase storage already started.
+
+### Minor motion polish (optional, taste call)
+- Nav pill morph is `.6s` (`app/site.tsx:427`); canonical UI timing is 300-450ms. Current value
+  reads as an intentional "cinematic" morph - fine to leave, but `.45s` would feel tighter if it
+  ever feels slow in review.
+- FAQ chevron (`▾`) is a text glyph and renders inconsistently across fonts; an inline SVG arrow
+  would be more stable.

@@ -8,3 +8,4 @@ out
 *.tsbuildinfo
 npm-debug.log*
 .playwright-mcp/
+codereview.md
