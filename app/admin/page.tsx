@@ -6,7 +6,7 @@ import {
   loadData, saveData, resetData, loadRemote, saveRemote, DEFAULTS,
   SiteData, Service, Work, TeamProject, FaqItem, LogEntry, HeroBg, CursorStyle, RuFont, HeroArt, HERO_PRESETS
 } from '@/lib/data';
-import { shrinkImage, dataUrlKb, uploadMedia } from '@/lib/img';
+import { shrinkImage, dataUrlKb, uploadMedia, fileToDataUrl, firstFrame, isVideoSrc, importUrl, inStorage } from '@/lib/img';
 import { renderAscii, renderTextArt } from '@/lib/ascii';
 import { T, type Dict } from '@/lib/i18n';
 
@@ -26,7 +26,7 @@ const I18N_FIELDS: [keyof Dict, string][] = [
 
 // effect controls, rendered in the settings page
 type FxKey = 'fxGradualBlur' | 'fxHeadlineReveal' | 'fxCardTilt';
-const HERO_BG_OPTS: [HeroBg, string][] = [['image', 'Image (hands)'], ['pixel-blast', 'Pixel blast'], ['dither', 'Dither'], ['threads', 'Threads'], ['liquid-chrome', 'Liquid chrome']];
+const HERO_BG_OPTS: [HeroBg, string][] = [['image', 'Image (hands)'], ['gif', 'GIF / video'], ['pixel-blast', 'Pixel blast'], ['dither', 'Dither'], ['threads', 'Threads'], ['liquid-chrome', 'Liquid chrome']];
 const CURSOR_OPTS: [CursorStyle, string][] = [['dot', 'Dot'], ['pixel-trail', 'Pixel trail'], ['target', 'Target'], ['native', 'Native']];
 const FX_TOGGLES: [FxKey, string, boolean][] = [
   ['fxGradualBlur', 'Gradual blur seams', true],
@@ -60,7 +60,7 @@ const SECTION_KEYS: Partial<Record<Sec, (keyof SiteData)[]>> = {
   works: ['works'],
   projects: ['projects'],
   faq: ['faq'],
-  settings: ['telegram', 'github', 'email', 'heroBg', 'heroArt', 'heroArtCustom', 'heroArtScale', 'heroPreset', 'cursorStyle', 'fxGradualBlur', 'fxHeadlineReveal', 'fxCardTilt', 'fontRu'],
+  settings: ['telegram', 'github', 'email', 'heroBg', 'heroArt', 'heroArtCustom', 'heroArtScale', 'heroBgGif', 'heroBgGifPoster', 'heroBgGifOpacity', 'heroPreset', 'cursorStyle', 'fxGradualBlur', 'fxHeadlineReveal', 'fxCardTilt', 'fontRu'],
   i18n: ['i18n', 'i18nFontRu']
 };
 
@@ -87,6 +87,8 @@ export default function Admin() {
   const [aboutW, setAboutW] = useState<number | null>(null);
   // same for the hero art scale
   const [heroScale, setHeroScale] = useState<number | null>(null);
+  // same for how bright the background gif is
+  const [bgOpacity, setBgOpacity] = useState<number | null>(null);
   // paste-your-own ascii art box
   const [asciiOpen, setAsciiOpen] = useState(false);
   const [asciiText, setAsciiText] = useState('');
@@ -100,6 +102,7 @@ export default function Admin() {
   const importSec = useRef<Sec>('about');
   const aboutImgRef = useRef<HTMLInputElement>(null);
   const heroImgRef = useRef<HTMLInputElement>(null);
+  const bgGifRef = useRef<HTMLInputElement>(null);
 
   // defined before the effects so they can call it
   const show = (msg: string) => {
@@ -192,6 +195,37 @@ export default function Admin() {
     } catch {
       setErr('not saved: could not read that picture');
     }
+  };
+  // gif / video for the hero background. a gif never goes on a canvas or it
+  // loses its frames, so it is uploaded as is and a still frame is saved next
+  // to it for visitors who ask for less motion
+  const onBgMedia = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    e.target.value = '';
+    if (!f) return;
+    if (f.size > 12000000) { setErr('not saved: file is over ~12mb, compress it first'); return; }
+    const vid = f.type.startsWith('video/');
+    // gif and webp can be animated, a canvas would keep only one frame
+    const asIs = vid || /^image\/(gif|webp|apng)$/.test(f.type);
+    show('uploading background...');
+    try {
+      const raw = asIs ? await fileToDataUrl(f) : await shrinkImage(f, 1920, 'image/jpeg', 12000);
+      const url = await uploadMedia(raw);
+      // storage is a must here: a gif inside the content file blows the 4mb cap
+      if (url.startsWith('data:')) { setErr('not saved: storage upload failed, try again'); return; }
+      const still = vid ? null : await firstFrame(f);
+      const posterUrl = still ? await uploadMedia(still) : null;
+      persist({
+        ...data, heroBg: 'gif', heroBgGif: url,
+        heroBgGifPoster: posterUrl && !posterUrl.startsWith('data:') ? posterUrl : null
+      }, 'background saved');
+    } catch {
+      setErr('not saved: could not read that file');
+    }
+  };
+  const commitBgOpacity = async () => {
+    if (bgOpacity === null || bgOpacity === (data.heroBgGifOpacity ?? 100)) { setBgOpacity(null); return; }
+    if (await persist({ ...data, heroBgGifOpacity: bgOpacity })) setBgOpacity(null);
   };
   // save the slider width once the user lets go of it
   const commitAboutW = async () => {
@@ -380,15 +414,24 @@ export default function Admin() {
       show('photo added, ' + dataUrlKb(src) + 'kb');
     } catch { show('image could not be read'); }
   };
-  const readVideo = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // the file goes to storage, so it does not have to fit the content json
+  const readVideo = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
-    if (!f) return;
-    if (f.size > 2500000) { show('video too big, max ~2.5mb (or use a url)'); return; }
-    const r = new FileReader();
-    // upload to storage, keep the data url if that fails
-    r.onload = async () => { setVideo(await uploadMedia(r.result as string)); setForm(fm => ({ ...fm, videoUrl: '' })); };
-    r.readAsDataURL(f);
     e.target.value = '';
+    if (!f) return;
+    if (f.size > 12000000) { show('video too big, max ~12mb (or use a url)'); return; }
+    show('uploading video...');
+    try {
+      const url = await uploadMedia(await fileToDataUrl(f));
+      // a big base64 video inside the content file would break the save
+      if (url.startsWith('data:') && dataUrlKb(url) > 1200) {
+        setErr('not saved: storage upload failed, and the file is too big to keep inline');
+        return;
+      }
+      setVideo(url);
+      setForm(fm => ({ ...fm, videoUrl: '' }));
+      show('video attached');
+    } catch { show('video could not be read'); }
   };
 
   const fmtWrap = (pre: string, post: string) => {
@@ -408,9 +451,21 @@ export default function Admin() {
   };
   const saveWork = async () => {
     if (!F('title').trim() || !F('price').trim()) return;
-    const vid = video || F('videoUrl').trim() || null;
+    let vid = video || F('videoUrl').trim() || null;
+    // a pasted link is copied into our storage first: discord and most cdn
+    // links are signed and stop working in a day, and the card goes black
+    let warn = '';
+    if (vid && !inStorage(vid) && /^https?:/i.test(vid)) {
+      show('copying the video to storage...');
+      const r = await importUrl(vid);
+      if (r.url) vid = r.url;
+      else warn = 'video not copied to storage: ' + r.err + '. saved as a plain link, it can stop working';
+    }
     const item: Work = { id: editId || 'w' + Date.now(), title: F('title').trim(), titleRu: F('titleRu').trim(), price: F('price').trim(), date: F('date').trim(), link: F('link').trim(), video: vid, desc: F('desc').trim(), descRu: F('descRu').trim(), imgs, img: imgs[0] || null, changelog: logs };
-    if (await persist({ ...data, works: upsert(data.works, item) })) clearForm();
+    if (await persist({ ...data, works: upsert(data.works, item) })) {
+      clearForm();
+      if (warn) setErr(warn);
+    }
   };
   const saveProject = async () => {
     if (!F('name').trim() || !F('role').trim()) return;
@@ -648,9 +703,10 @@ export default function Admin() {
                 {inp('link', 'link (optional)')}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 13, color: '#9c9c9c', flexWrap: 'wrap' }}>
                   video (mp4/webm, plays muted like a gif): <input type="file" accept="video/mp4,video/webm" onChange={readVideo} style={{ fontSize: 12, color: '#9c9c9c' }} />
-                  {!!video && <><span style={{ color: '#f3f3f3', fontSize: 12 }}>video attached ({Math.round(video.length * 0.75 / 1024)}kb)</span><span className="adel" onClick={() => setVideo('')}>clear</span></>}
+                  {!!video && <><span style={{ color: '#f3f3f3', fontSize: 12 }}>video attached{video.startsWith('data:') ? ' (' + dataUrlKb(video) + 'kb, inline)' : ' (in storage)'}</span><span className="adel" onClick={() => setVideo('')}>clear</span></>}
                 </div>
                 {inp('videoUrl', '...or paste a video url instead')}
+                <div style={{ fontSize: 12, color: '#474747', marginTop: -4 }}>a pasted link is copied into our storage on save. discord links are signed and die in a day, so paste them the same day or upload the file</div>
                 <textarea className="ainput" value={F('desc')} onChange={onF('desc')} rows={3} placeholder="description (EN)" style={{ lineHeight: 1.5 }} />
                 {inp('titleRu', 'название RU (опц.)')}
                 <textarea className="ainput" value={F('descRu')} onChange={onF('descRu')} rows={3} placeholder="описание RU (опц.)" style={{ lineHeight: 1.5 }} />
@@ -775,8 +831,43 @@ export default function Admin() {
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                   {HERO_BG_OPTS.map(([val, label]) => {
                     const active = (data.heroBg || 'image') === val;
-                    return <span key={val} className="aghost" style={{ padding: '6px 14px', fontSize: 13, borderColor: active ? '#474747' : '#2a2a2a', color: active ? '#f3f3f3' : '#9c9c9c' }} onClick={() => persist({ ...data, heroBg: val })}>{label}</span>;
+                    const pick = () => {
+                      // picking gif with nothing uploaded yet asks for the file
+                      if (val === 'gif' && !data.heroBgGif) { bgGifRef.current?.click(); return; }
+                      persist({ ...data, heroBg: val });
+                    };
+                    return <span key={val} className="aghost" style={{ padding: '6px 14px', fontSize: 13, borderColor: active ? '#474747' : '#2a2a2a', color: active ? '#f3f3f3' : '#9c9c9c' }} onClick={pick}>{label}</span>;
                   })}
+                </div>
+              </div>
+
+              {/* the gif or video behind the hero. works on phones too, unlike
+                  the webgl backgrounds */}
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '10px 0' }}>
+                <span style={{ fontSize: 14, width: 150, paddingTop: 6 }}>Background gif</span>
+                <div style={{ flex: 1 }}>
+                  <input ref={bgGifRef} type="file" accept="image/gif,image/webp,image/png,image/jpeg,video/mp4,video/webm" style={{ display: 'none' }} onChange={onBgMedia} />
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                    <span className="aghost" style={{ padding: '6px 14px', fontSize: 13 }} onClick={() => bgGifRef.current?.click()}>{data.heroBgGif ? 'Replace…' : 'Upload…'}</span>
+                    {!!data.heroBgGif && (
+                      <span className="adel" onClick={() => persist({ ...data, heroBgGif: null, heroBgGifPoster: null, heroBg: (data.heroBg || 'image') === 'gif' ? 'image' : data.heroBg })}>remove</span>
+                    )}
+                  </div>
+                  <div style={{ marginTop: 6, fontSize: 12, color: '#474747' }}>gif, webp, png or a small mp4/webm, up to ~12mb. mp4 is much lighter than a gif of the same length. reduced-motion visitors see a still frame</div>
+                  {!!data.heroBgGif && <>
+                    {/* how bright it sits behind the headline; saved on release */}
+                    <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <span style={{ fontSize: 13, width: 60, color: '#9c9c9c' }}>Opacity</span>
+                      <input type="range" min={10} max={100} step={5} value={bgOpacity ?? data.heroBgGifOpacity ?? 100}
+                        onChange={e => setBgOpacity(Number(e.target.value))}
+                        onPointerUp={commitBgOpacity} onKeyUp={commitBgOpacity} onBlur={commitBgOpacity}
+                        style={{ width: 220, accentColor: '#f3f3f3' }} />
+                      <span style={{ fontSize: 13, color: '#9c9c9c', width: 52 }}>{bgOpacity ?? data.heroBgGifOpacity ?? 100}%</span>
+                    </div>
+                    {isVideoSrc(data.heroBgGif)
+                      ? <video src={data.heroBgGif} muted loop autoPlay playsInline style={{ marginTop: 10, width: 190, aspectRatio: '16/9', objectFit: 'cover', borderRadius: 8, border: '1px solid #212121', display: 'block', background: '#000' }} />
+                      : <img src={data.heroBgGif} alt="" style={{ marginTop: 10, width: 190, aspectRatio: '16/9', objectFit: 'cover', borderRadius: 8, border: '1px solid #212121', display: 'block', background: '#000' }} />}
+                  </>}
                 </div>
               </div>
 
