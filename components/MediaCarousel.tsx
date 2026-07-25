@@ -25,6 +25,8 @@ interface MediaCarouselProps {
   startIndex?: number;
   // reports the visible slide up, so the modal can open on the same one
   onIndex?: (i: number) => void;
+  // a file that failed to load (dead link): the parent drops that slide
+  onBroken?: (src: string) => void;
   // top corners of the modal media
   radius?: string;
 }
@@ -34,42 +36,77 @@ const mediaStyle = (mode: 'card' | 'modal', radius?: string): React.CSSPropertie
     ? { width: '100%', height: '100%', objectFit: 'cover', display: 'block', background: '#000' }
     : { width: '100%', aspectRatio: '16/9', objectFit: 'cover', display: 'block', borderRadius: radius, background: '#000' };
 
-export default function MediaCarousel({ media, mode, motionOk = true, startIndex = 0, onIndex, radius }: MediaCarouselProps) {
+export default function MediaCarousel({ media, mode, motionOk = true, startIndex = 0, onIndex, onBroken, radius }: MediaCarouselProps) {
   const [api, setApi] = useState<CarouselApi>();
   const [sel, setSel] = useState(startIndex);
   const onIndexRef = useRef(onIndex);
   onIndexRef.current = onIndex;
+  const onBrokenRef = useRef(onBroken);
+  onBrokenRef.current = onBroken;
+  // the parent rebuilds this array on every render: keep it in a ref so the
+  // auto advance timer below is not restarted each time
+  const mediaRef = useRef(media);
+  mediaRef.current = media;
   const many = media.length > 1;
   const card = mode === 'card';
 
-  // only the visible slide's video plays, the rest stay paused
+  // play the visible slide of a card that is on screen, pause everything else.
+  // safari refuses to autoplay a video that is off screen, so playing it once
+  // at mount left the card black - it has to be retried when the card shows up.
+  // with motion off nothing plays: the first frame stays on like a photo
   useEffect(() => {
     if (!api) return;
-    const sync = () => {
+    let onScreen = mode === 'modal';
+    const apply = () => {
       const i = api.selectedScrollSnap();
-      setSel(i);
-      onIndexRef.current?.(i);
       api.slideNodes().forEach((node, ni) => {
         node.querySelectorAll('video').forEach(v => {
-          if (ni === i) { v.muted = true; v.play().catch(() => {}); }
+          if (ni === i && onScreen && motionOk) { v.muted = true; v.play().catch(() => {}); }
           else v.pause();
         });
       });
     };
+    const sync = () => {
+      const i = api.selectedScrollSnap();
+      setSel(i);
+      onIndexRef.current?.(i);
+      apply();
+    };
+    const io = new IntersectionObserver(([e]) => { onScreen = e.isIntersecting; apply(); }, { threshold: 0.15 });
+    io.observe(api.rootNode());
     sync();
     api.on('select', sync);
     api.on('reInit', sync);
-    return () => { api.off('select', sync); api.off('reInit', sync); };
+    return () => { io.disconnect(); api.off('select', sync); api.off('reInit', sync); };
+  }, [api, motionOk, mode]);
+
+  // a video that never even gets its metadata (dead link, blocked host) would
+  // sit there as a black frame, so after a few seconds the parent drops it
+  useEffect(() => {
+    if (!api) return;
+    const t = setTimeout(() => {
+      api.slideNodes().forEach(node => {
+        node.querySelectorAll('video').forEach(v => {
+          if (v.readyState === 0) onBrokenRef.current?.(v.getAttribute('src') || '');
+        });
+      });
+    }, 8000);
+    return () => clearTimeout(t);
   }, [api]);
 
-  // cards auto advance photo slides every 5s. video slides wait for onEnded
+  // cards auto advance photo slides every 5s. video slides wait for onEnded,
+  // unless the video is not really playing (autoplay blocked, stalled) - then
+  // it must not hold the carousel on one frame forever
   useEffect(() => {
     if (!card || !many || !motionOk || !api) return;
     const iv = setInterval(() => {
-      if (media[api.selectedScrollSnap()]?.kind === 'img') api.scrollNext();
+      const i = api.selectedScrollSnap();
+      if (mediaRef.current[i]?.kind === 'img') { api.scrollNext(); return; }
+      const v = api.slideNodes()[i]?.querySelector('video');
+      if (!v || v.paused || v.ended) api.scrollNext();
     }, 5000);
     return () => clearInterval(iv);
-  }, [api, card, many, motionOk, media]);
+  }, [api, card, many, motionOk]);
 
   // arrows live inside the card link: keep clicks away from the modal
   const stop = (e: React.MouseEvent) => { e.stopPropagation(); e.preventDefault(); };
@@ -85,14 +122,17 @@ export default function MediaCarousel({ media, mode, motionOk = true, startIndex
         {media.map((m, i) => (
           <CarouselItem key={i} className="pl-0 h-full">
             {m.kind === 'video' ? (
+              // metadata, not none: the first frame paints right away, so a
+              // video that can not autoplay still looks like a picture
               <video
-                src={m.src} muted playsInline preload="none"
+                src={m.src} muted playsInline preload="metadata"
                 loop={!card || !many}
                 onEnded={card && many ? () => api?.scrollNext() : undefined}
+                onError={() => onBrokenRef.current?.(m.src)}
                 style={mediaStyle(mode, radius)}
               />
             ) : (
-              <img src={m.src} loading="lazy" alt="" draggable={false} style={mediaStyle(mode, radius)} />
+              <img src={m.src} loading="lazy" alt="" draggable={false} onError={() => onBrokenRef.current?.(m.src)} style={mediaStyle(mode, radius)} />
             )}
           </CarouselItem>
         ))}

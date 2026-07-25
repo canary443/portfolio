@@ -77,6 +77,9 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
   const [modal, setModal] = useState<Item | null>(null);
   const [pic, setPic] = useState(0);
   const [cardPic, setCardPic] = useState<Record<string, number>>({});
+  // media that failed to load (a dead link, an expired cdn url). the slide is
+  // dropped so the card falls back to the next photo instead of a black box
+  const [badMedia, setBadMedia] = useState<Record<string, true>>({});
   const [faqOpen, setFaqOpen] = useState<string | null>(null);
   const [toast, setToast] = useState('');
   const [noise, setNoise] = useState('');
@@ -109,12 +112,15 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
   const trailOn = cursorStyle === 'pixel-trail' && fineOk;
   const targetOn = cursorStyle === 'target' && fineOk;
   const fxCapable = webglOk && fineOk;
-  const heroBg = data.heroBg || 'image';
-  const heroFxOn = fxCapable && heroBg !== 'image';
+  // 'gif' needs an uploaded file, without one it falls back to the picture hero
+  const heroBg = data.heroBg === 'gif' && !data.heroBgGif ? 'image' : (data.heroBg || 'image');
+  // a gif or video is plain media, so it runs on phones and safari too
+  const gifBgOn = heroBg === 'gif';
+  const heroFxOn = fxCapable && heroBg !== 'image' && !gifBgOn;
   // show the hands only for the image mode, or as a fallback once we know webgl
   // is not available - never during the brief window before that is resolved,
   // so effect backgrounds do not flash the hands on load
-  const showImage = config.showMap && (heroBg === 'image' || (fxResolved && !fxCapable));
+  const showImage = config.showMap && !gifBgOn && (heroBg === 'image' || (fxResolved && !fxCapable));
   const gradualOn = data.fxGradualBlur !== false;
   const headlineOn = data.fxHeadlineReveal !== false && motionOk;
   const tiltOn = !!data.fxCardTilt && fineOk;
@@ -324,6 +330,9 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
     setToast(msg);
     toastT.current = setTimeout(() => setToast(''), 1700);
   }, []);
+  const markBad = useCallback((src: string) => {
+    setBadMedia(b => (b[src] ? b : { ...b, [src]: true }));
+  }, []);
 
   const spotMove = (e: React.MouseEvent<HTMLElement>) => {
     const el = e.currentTarget, r = el.getBoundingClientRect();
@@ -369,7 +378,7 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
       const media: Media[] = [
         ...(w.video ? [{ kind: 'video' as const, src: w.video }] : []),
         ...pics.map(src => ({ kind: 'img' as const, src }))
-      ];
+      ].filter(m => !badMedia[m.src]);
       return {
         id: w.id, media,
         title: ru && w.titleRu ? w.titleRu : w.title, link: w.link,
@@ -380,7 +389,7 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
       };
     }),
     ...data.projects.map(p => ({
-      id: p.id, media: p.img ? [{ kind: 'img' as const, src: p.img }] : [],
+      id: p.id, media: p.img && !badMedia[p.img] ? [{ kind: 'img' as const, src: p.img }] : [],
       title: p.name, link: p.link, sub: '',
       cat: ru && p.roleRu ? p.roleRu : p.role,
       metaDim: '', metaMain: p.from + ' - ' + p.to, metaSub: '', place: t.team,
@@ -456,7 +465,13 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
       {/* hero (pinned, content slides over it) */}
       <div style={{ background: 'var(--hero-bg)', position: 'sticky', top: 0, zIndex: 1, overflow: 'hidden' }}>
         {/* webgl background, only on capable devices. plain image is the fallback */}
-        {heroFxOn && <HeroFx bg={heroBg} preset={data.heroPreset} />}
+        {(heroFxOn || gifBgOn) && (
+          <HeroFx
+            bg={heroBg} preset={data.heroPreset}
+            gif={data.heroBgGif} gifPoster={data.heroBgGifPoster}
+            gifOpacity={data.heroBgGifOpacity} motionOk={motionOk}
+          />
+        )}
         <div ref={heroRef} style={{ position: 'relative', zIndex: 1, maxWidth: 1200, margin: '0 auto', padding: '104px 28px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', transformOrigin: '50% 30%', willChange: reduced.current ? 'auto' : 'transform,opacity' }}>
           <h1 className="in0" style={{ margin: 0, fontSize: 'clamp(38px,5.2vw,60px)', fontWeight: 400, lineHeight: 1.05, letterSpacing: '-0.011em', maxWidth: '17ch', textWrap: 'balance', ...rf('heroT') }}>{headlineOn ? <HeadlineReveal text={t.heroT} /> : t.heroT}</h1>
           <div className="in1" style={{ marginTop: 14, fontSize: 18, lineHeight: 1.4, color: 'var(--muted)', maxWidth: '46ch', textWrap: 'balance', ...rf('heroSub') }}>{t.heroSub}</div>
@@ -567,7 +582,7 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
                   {cur ? (
                     <span style={{ position: 'relative', display: 'block', aspectRatio: '16/10', borderBottom: '1px solid var(--line)', overflow: 'hidden' }}>
                       {/* shadcn/embla carousel: crossfade slides, swipe on touch */}
-                      <MediaCarousel media={w.media} mode="card" motionOk={motionOk} onIndex={i => setCardPic(c => (c[w.id] === i ? c : { ...c, [w.id]: i }))} />
+                      <MediaCarousel media={w.media} mode="card" motionOk={motionOk} onBroken={markBad} onIndex={i => setCardPic(c => (c[w.id] === i ? c : { ...c, [w.id]: i }))} />
                     </span>
                   ) : (
                     <div style={{ width: '100%', aspectRatio: '16/10', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'repeating-linear-gradient(45deg,var(--bg) 0px,var(--bg) 9px,var(--card-2) 9px,var(--card-2) 18px)', borderBottom: '1px solid var(--line)' }}>
@@ -714,7 +729,7 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
           <div onClick={e => e.stopPropagation()} data-lenis-prevent style={{ width: 'min(660px,94vw)', maxHeight: '86vh', overflow: 'auto', background: 'var(--card)', border: '1px solid var(--line-2)', borderRadius: 14, animation: closing ? (rm ? 'zxfadeout .2s ease both' : `zxmodalout .24s ${EASE} both`) : rm ? 'none' : `zxmodal .45s ${EASE} both` }}>
             {modal.media.length > 0 && (
               <div style={{ position: 'relative', borderBottom: '1px solid var(--line)' }}>
-                <MediaCarousel media={modal.media} mode="modal" motionOk={motionOk} startIndex={Math.min(pic, modal.media.length - 1)} radius="13px 13px 0 0" />
+                <MediaCarousel media={modal.media} mode="modal" motionOk={motionOk} onBroken={markBad} startIndex={Math.min(pic, modal.media.length - 1)} radius="13px 13px 0 0" />
               </div>
             )}
             <div style={{ padding: '26px 28px 28px' }}>
