@@ -1,5 +1,12 @@
 // server side read of the shared content file. used by the page (so the first
 // paint already has real content) and by the content api.
+//
+// there is no data cache around this on purpose: the next data cache refuses
+// anything over 2mb and the failure comes back as an unhandled rejection on
+// every request, and site.json is ~3.8mb while old photos still sit in it as
+// base64. move the media to storage first (admin settings, "move files to
+// storage"), then wrapping this in unstable_cache with a tag the save clears
+// is a three line change and a real ttfb win.
 import { get } from '@vercel/blob';
 import { DEFAULTS, SiteData } from './data';
 
@@ -20,3 +27,4 @@ export async function readContent(): Promise<SiteData | null> {
     return null;
   }
 }
+
