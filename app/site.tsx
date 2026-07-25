@@ -671,8 +671,8 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
 
         {/* projects */}
         <div id="projects" style={{ maxWidth: 1200, margin: '0 auto', padding: '110px 28px 0' }}>
+          {/* just a rule and the count, the heading below says the rest */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 18, marginBottom: 30 }}>
-            <span style={{ fontSize: 13, letterSpacing: '.12em', color: 'var(--muted)' }}>{'// PROJECTS'}</span>
             <span style={{ flex: 1, borderTop: '1px solid var(--line)' }} />
             <span style={{ fontSize: 13, color: 'var(--faint)' }}>({items.length})</span>
           </div>
