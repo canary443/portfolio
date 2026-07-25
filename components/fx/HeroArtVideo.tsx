@@ -4,8 +4,12 @@
 // browsers refuse to start a video with sound until the visitor has clicked or
 // typed somewhere on the page - that is a browser rule, not a setting we own.
 // so when the start is refused the video runs as a silent loop, and the first
-// click, key or touch restarts it from frame one with the sound on. that way
-// the sound pass is always heard whole, never from the middle.
+// real gesture restarts it from frame one with the sound on. that way the sound
+// pass is always heard whole, never from the middle.
+// the spec does not list scrolling as permission, but chrome does let a wheel
+// or touch scroll through, so a scroll gets a few careful tries too. the sound
+// only stays on when the browser really accepted it: a refusal drops straight
+// back to the silent loop, the picture never jumps and never stalls.
 
 import { useCallback, useEffect, useRef } from 'react';
 
@@ -44,34 +48,53 @@ export default function HeroArtVideo({ src, sound, motionOk, style, zoom, hold }
       el.loop = true;
       el.play().catch(() => {});
     };
-    // one pass with sound, always from the first frame
+    // one pass with sound, always from the first frame. the time is only
+    // rewound once the browser has really accepted the sound, so a refused
+    // try never makes the picture jump
     const loud = () => {
       const el = vid.current;
       if (!el || done.current) return;
-      done.current = true;
       el.muted = false;
-      el.loop = false;
-      el.currentTime = 0;
-      el.play().catch(loop);
+      el.play().then(() => {
+        done.current = true;
+        el.loop = false;
+        el.currentTime = 0;
+        el.play().catch(loop);
+        drop();
+      }).catch(loop);
+    };
+
+    // gestures that really do unlock sound
+    const HARD = ['pointerdown', 'touchend', 'keydown', 'click'];
+    // scrolling: not permission, but worth a few tries
+    const SOFT = ['wheel', 'touchmove', 'scroll'];
+    let tries = 0;
+    let last = 0;
+    const onScroll = () => {
+      if (done.current || tries >= 4) return;
+      // one try per scroll burst, so a refusal can not stutter the loop
+      const now = performance.now();
+      if (now - last < 900) return;
+      last = now;
+      tries++;
+      loud();
     };
     const drop = () => {
-      ['pointerdown', 'touchend', 'keydown', 'click'].forEach(t =>
-        window.removeEventListener(t, loud, true)
-      );
+      HARD.forEach(t => window.removeEventListener(t, loud, true));
+      SOFT.forEach(t => window.removeEventListener(t, onScroll, true));
     };
     const wake = () => {
       // capture, so the sound comes on with the very first interaction
-      ['pointerdown', 'touchend', 'keydown', 'click'].forEach(t =>
-        window.addEventListener(t, loud, { capture: true, once: true })
-      );
+      HARD.forEach(t => window.addEventListener(t, loud, { capture: true }));
+      SOFT.forEach(t => window.addEventListener(t, onScroll, { capture: true, passive: true }));
     };
 
     if (!sound) { loop(); return drop; }
 
     v.muted = false;
     v.loop = false;
-    v.play().catch(() => {
-      // sound refused for now: run as a gif until the first real gesture
+    v.play().then(() => { done.current = true; }).catch(() => {
+      // sound refused for now: run as a gif until a gesture unlocks it
       done.current = false;
       loop();
       wake();
