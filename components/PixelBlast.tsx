@@ -1,5 +1,5 @@
 import { Effect, EffectComposer, EffectPass, RenderPass } from 'postprocessing';
-import React, { useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import * as THREE from 'three';
 
 type PixelBlastVariant = 'square' | 'circle' | 'triangle' | 'diamond';
@@ -403,14 +403,40 @@ const PixelBlast: React.FC<PixelBlastProps> = ({
       uEdgeFade: { value: number };
     };
     resizeObserver?: ResizeObserver;
-    raf?: number;
     quad?: THREE.Mesh<THREE.PlaneGeometry, THREE.ShaderMaterial>;
     timeOffset?: number;
     composer?: EffectComposer;
     touch?: ReturnType<typeof createTouchTexture>;
     liquidEffect?: Effect;
+    onPointerDown: (e: PointerEvent) => void;
+    onPointerMove: (e: PointerEvent) => void;
   } | null>(null);
   const prevConfigRef = useRef<ReinitConfig | null>(null);
+  const rafRef = useRef(0);
+
+  // free the webgl context and everything hanging off it
+  const disposeThree = useCallback(() => {
+    const t = threeRef.current;
+    if (!t) return;
+    threeRef.current = null;
+    cancelAnimationFrame(rafRef.current);
+    t.resizeObserver?.disconnect();
+    t.renderer.domElement.removeEventListener('pointerdown', t.onPointerDown);
+    t.renderer.domElement.removeEventListener('pointermove', t.onPointerMove);
+    t.quad?.geometry.dispose();
+    t.material.dispose();
+    // the touch texture owns its own canvas, it is not freed by the composer
+    t.touch?.texture.dispose();
+    t.composer?.dispose();
+    t.renderer.dispose();
+    t.renderer.forceContextLoss();
+    t.renderer.domElement.parentElement?.removeChild(t.renderer.domElement);
+  }, []);
+
+  // the effect below keeps the context alive across prop changes, so only a
+  // real unmount may tear it down
+  useEffect(() => disposeThree, [disposeThree]);
+
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -427,18 +453,7 @@ const PixelBlast: React.FC<PixelBlastProps> = ({
         }
     }
     if (mustReinit) {
-      if (threeRef.current) {
-        const t = threeRef.current;
-        t.resizeObserver?.disconnect();
-        cancelAnimationFrame(t.raf!);
-        t.quad?.geometry.dispose();
-        t.material.dispose();
-        t.composer?.dispose();
-        t.renderer.dispose();
-        t.renderer.forceContextLoss();
-        if (t.renderer.domElement.parentElement === container) container.removeChild(t.renderer.domElement);
-        threeRef.current = null;
-      }
+      disposeThree();
       const canvas = document.createElement('canvas');
       const renderer = new THREE.WebGLRenderer({
         canvas,
@@ -581,10 +596,9 @@ const PixelBlast: React.FC<PixelBlastProps> = ({
       renderer.domElement.addEventListener('pointermove', onPointerMove, {
         passive: true
       });
-      let raf = 0;
       const animate = () => {
         if (autoPauseOffscreen && !visibilityRef.current.visible) {
-          raf = requestAnimationFrame(animate);
+          rafRef.current = requestAnimationFrame(animate);
           return;
         }
         uniforms.uTime.value = timeOffset + clock.getElapsedTime() * speedRef.current;
@@ -606,9 +620,9 @@ const PixelBlast: React.FC<PixelBlastProps> = ({
           });
           composer.render();
         } else renderer.render(scene, camera);
-        raf = requestAnimationFrame(animate);
+        rafRef.current = requestAnimationFrame(animate);
       };
-      raf = requestAnimationFrame(animate);
+      rafRef.current = requestAnimationFrame(animate);
       threeRef.current = {
         renderer,
         scene,
@@ -618,12 +632,13 @@ const PixelBlast: React.FC<PixelBlastProps> = ({
         clickIx: 0,
         uniforms,
         resizeObserver: ro,
-        raf,
         quad,
         timeOffset,
         composer,
         touch,
-        liquidEffect
+        liquidEffect,
+        onPointerDown,
+        onPointerMove
       };
     } else {
       const t = threeRef.current!;
@@ -650,21 +665,8 @@ const PixelBlast: React.FC<PixelBlastProps> = ({
       if (t.touch) t.touch.radiusScale = liquidRadius;
     }
     prevConfigRef.current = cfg;
-    return () => {
-      if (threeRef.current && mustReinit) return;
-      if (!threeRef.current) return;
-      const t = threeRef.current;
-      t.resizeObserver?.disconnect();
-      cancelAnimationFrame(t.raf!);
-      t.quad?.geometry.dispose();
-      t.material.dispose();
-      t.composer?.dispose();
-      t.renderer.dispose();
-      t.renderer.forceContextLoss();
-      if (t.renderer.domElement.parentElement === container) container.removeChild(t.renderer.domElement);
-      threeRef.current = null;
-    };
   }, [
+    disposeThree,
     antialias,
     liquid,
     noiseAmount,

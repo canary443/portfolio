@@ -69,7 +69,22 @@ const useImageLoader = (seqRef: RefObject<HTMLElement | null>, onLoad: () => voi
   }, [onLoad, seqRef, dependencies]);
 };
 
-const useAnimationLoop = (trackRef: RefObject<HTMLDivElement | null>, targetVelocity: number, seqWidth: number, seqHeight: number, isHovered: boolean, hoverSpeed: number | undefined, isVertical: boolean) => {
+// watch the reduced motion setting. false on the server, the effect reads the
+// real value after mount
+const usePrefersReducedMotion = () => {
+  const [reduced, setReduced] = useState(false);
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const sync = () => setReduced(mq.matches);
+    sync();
+    mq.addEventListener('change', sync);
+    return () => mq.removeEventListener('change', sync);
+  }, []);
+  return reduced;
+};
+
+const useAnimationLoop = (trackRef: RefObject<HTMLDivElement | null>, targetVelocity: number, seqWidth: number, seqHeight: number, isHovered: boolean, hoverSpeed: number | undefined, isVertical: boolean, reducedMotion: boolean) => {
   const rafRef = useRef<number | null>(null);
   const lastTimestampRef = useRef<number | null>(null);
   const offsetRef = useRef(0);
@@ -82,6 +97,11 @@ const useAnimationLoop = (trackRef: RefObject<HTMLDivElement | null>, targetVelo
     if (seqSize > 0) {
       offsetRef.current = ((offsetRef.current % seqSize) + seqSize) % seqSize;
       track.style.transform = isVertical ? `translate3d(0, ${-offsetRef.current}px, 0)` : `translate3d(${-offsetRef.current}px, 0, 0)`;
+    }
+    // less motion: park the track and never start a frame loop
+    if (reducedMotion) {
+      velocityRef.current = 0;
+      return;
     }
     const animate = (timestamp: number) => {
       if (lastTimestampRef.current === null) lastTimestampRef.current = timestamp;
@@ -100,7 +120,7 @@ const useAnimationLoop = (trackRef: RefObject<HTMLDivElement | null>, targetVelo
     };
     rafRef.current = requestAnimationFrame(animate);
     return () => { if (rafRef.current !== null) { cancelAnimationFrame(rafRef.current); rafRef.current = null; } lastTimestampRef.current = null; };
-  }, [targetVelocity, seqWidth, seqHeight, isHovered, hoverSpeed, isVertical, trackRef]);
+  }, [targetVelocity, seqWidth, seqHeight, isHovered, hoverSpeed, isVertical, trackRef, reducedMotion]);
 };
 
 export const LogoLoop = memo(function LogoLoop({
@@ -125,6 +145,7 @@ export const LogoLoop = memo(function LogoLoop({
   }, [hoverSpeed, pauseOnHover]);
 
   const isVertical = direction === 'up' || direction === 'down';
+  const reducedMotion = usePrefersReducedMotion();
 
   const targetVelocity = useMemo(() => {
     const magnitude = Math.abs(speed);
@@ -159,7 +180,7 @@ export const LogoLoop = memo(function LogoLoop({
 
   useResizeObserver(updateDimensions, [containerRef, seqRef] as RefObject<HTMLElement | null>[], [logos, gap, logoHeight, isVertical]);
   useImageLoader(seqRef, updateDimensions, [logos, gap, logoHeight, isVertical]);
-  useAnimationLoop(trackRef, targetVelocity, seqWidth, seqHeight, isHovered, effectiveHoverSpeed, isVertical);
+  useAnimationLoop(trackRef, targetVelocity, seqWidth, seqHeight, isHovered, effectiveHoverSpeed, isVertical, reducedMotion);
 
   const cssVariables = useMemo(() => ({
     '--logoloop-gap': `${gap}px`,

@@ -21,6 +21,14 @@ export const LiquidChrome: React.FC<LiquidChromeProps> = ({
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
 
+  // keep the latest props in a ref. the render loop pushes them into the live
+  // uniforms, so a new prop never rebuilds the webgl context. written in an
+  // effect, so a render react throws away can not leave stale props behind
+  const propsRef = useRef({ baseColor, speed, amplitude, frequencyX, frequencyY, interactive });
+  useEffect(() => {
+    propsRef.current = { baseColor, speed, amplitude, frequencyX, frequencyY, interactive };
+  }, [baseColor, speed, amplitude, frequencyX, frequencyY, interactive]);
+
   useEffect(() => {
     if (!containerRef.current) return;
 
@@ -92,10 +100,10 @@ export const LiquidChrome: React.FC<LiquidChromeProps> = ({
         uResolution: {
           value: new Float32Array([gl.canvas.width, gl.canvas.height, gl.canvas.width / gl.canvas.height])
         },
-        uBaseColor: { value: new Float32Array(baseColor) },
-        uAmplitude: { value: amplitude },
-        uFrequencyX: { value: frequencyX },
-        uFrequencyY: { value: frequencyY },
+        uBaseColor: { value: new Float32Array(propsRef.current.baseColor) },
+        uAmplitude: { value: propsRef.current.amplitude },
+        uFrequencyX: { value: propsRef.current.frequencyX },
+        uFrequencyY: { value: propsRef.current.frequencyY },
         uMouse: { value: new Float32Array([0, 0]) }
       }
     });
@@ -113,6 +121,7 @@ export const LiquidChrome: React.FC<LiquidChromeProps> = ({
     resize();
 
     function handleMouseMove(event: MouseEvent) {
+      if (!propsRef.current.interactive) return;
       const rect = container.getBoundingClientRect();
       const x = (event.clientX - rect.left) / rect.width;
       const y = 1 - (event.clientY - rect.top) / rect.height;
@@ -122,6 +131,7 @@ export const LiquidChrome: React.FC<LiquidChromeProps> = ({
     }
 
     function handleTouchMove(event: TouchEvent) {
+      if (!propsRef.current.interactive) return;
       if (event.touches.length > 0) {
         const touch = event.touches[0];
         const rect = container.getBoundingClientRect();
@@ -133,15 +143,35 @@ export const LiquidChrome: React.FC<LiquidChromeProps> = ({
       }
     }
 
-    if (interactive) {
-      container.addEventListener('mousemove', handleMouseMove);
-      container.addEventListener('touchmove', handleTouchMove);
-    }
+    // passive: the handlers only read the pointer, they never block scrolling
+    container.addEventListener('mousemove', handleMouseMove, { passive: true });
+    container.addEventListener('touchmove', handleTouchMove, { passive: true });
 
     let animationId: number;
+    let clock = 0;
+    let last = 0;
     function update(t: number) {
       animationId = requestAnimationFrame(update);
-      program.uniforms.uTime.value = t * 0.001 * speed;
+      const { baseColor, speed, amplitude, frequencyX, frequencyY, interactive } = propsRef.current;
+
+      const color = program.uniforms.uBaseColor.value as Float32Array;
+      color[0] = baseColor[0];
+      color[1] = baseColor[1];
+      color[2] = baseColor[2];
+      program.uniforms.uAmplitude.value = amplitude;
+      program.uniforms.uFrequencyX.value = frequencyX;
+      program.uniforms.uFrequencyY.value = frequencyY;
+      if (!interactive) {
+        const mouseUniform = program.uniforms.uMouse.value as Float32Array;
+        mouseUniform[0] = 0;
+        mouseUniform[1] = 0;
+      }
+
+      // own clock: a new speed bends the motion, it does not jump to a new phase
+      if (last) clock += Math.min(t - last, 100) * 0.001 * speed;
+      else clock = t * 0.001 * speed;
+      last = t;
+      program.uniforms.uTime.value = clock;
       renderer.render({ scene: mesh });
     }
     animationId = requestAnimationFrame(update);
@@ -151,16 +181,14 @@ export const LiquidChrome: React.FC<LiquidChromeProps> = ({
     return () => {
       cancelAnimationFrame(animationId);
       window.removeEventListener('resize', resize);
-      if (interactive) {
-        container.removeEventListener('mousemove', handleMouseMove);
-        container.removeEventListener('touchmove', handleTouchMove);
-      }
+      container.removeEventListener('mousemove', handleMouseMove);
+      container.removeEventListener('touchmove', handleTouchMove);
       if (gl.canvas.parentElement) {
         gl.canvas.parentElement.removeChild(gl.canvas);
       }
       gl.getExtension('WEBGL_lose_context')?.loseContext();
     };
-  }, [baseColor, speed, amplitude, frequencyX, frequencyY, interactive]);
+  }, []);
 
   return <div ref={containerRef} className="w-full h-full" {...props} />;
 };

@@ -5,7 +5,7 @@
 // a color preset (mono, lava, ocean, ...) tints whichever background is active.
 
 import dynamic from 'next/dynamic';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { HeroBg } from '@/lib/data';
 import { HERO_PRESETS } from '@/lib/data';
 import { hexToRgb01 } from '@/lib/fx';
@@ -56,7 +56,21 @@ export default function HeroFx({ bg, preset = 'mono', gif, gifPoster, gifOpacity
 }) {
   const isMono = preset === 'mono';
   const color = (HERO_PRESETS.find(p => p.id === preset) || HERO_PRESETS[0]).color;
-  const rgb = hexToRgb01(color);
+  // hold the color arrays steady: the site re-renders often, and a fresh array
+  // would look like a new prop to the webgl layers
+  const rgb = useMemo(() => hexToRgb01(color), [color]);
+  const ditherColor = useMemo<[number, number, number]>(
+    () => (isMono ? [0.11, 0.11, 0.15] : rgb),
+    [isMono, rgb]
+  );
+  const threadsColor = useMemo<[number, number, number]>(
+    () => (isMono ? [0.42, 0.42, 0.42] : rgb),
+    [isMono, rgb]
+  );
+  const chromeColor = useMemo<[number, number, number]>(
+    () => (isMono ? [0.06, 0.06, 0.07] : [rgb[0] * 0.5, rgb[1] * 0.5, rgb[2] * 0.5]),
+    [isMono, rgb]
+  );
 
   return (
     <div style={{ position: 'absolute', inset: 0, zIndex: 0, pointerEvents: 'none' }} aria-hidden>
@@ -69,13 +83,13 @@ export default function HeroFx({ bg, preset = 'mono', gif, gifPoster, gifOpacity
         )}
         {bg === 'dither' && (
           // mono keeps a very dark wave; colored presets use the preset hue
-          <Dither waveColor={isMono ? [0.11, 0.11, 0.15] : rgb} waveSpeed={0.03} waveFrequency={3.2} waveAmplitude={0.3} colorNum={4} pixelSize={2} enableMouseInteraction mouseRadius={0.7} />
+          <Dither waveColor={ditherColor} waveSpeed={0.03} waveFrequency={3.2} waveAmplitude={0.3} colorNum={4} pixelSize={2} enableMouseInteraction mouseRadius={0.7} />
         )}
         {bg === 'threads' && (
-          <Threads color={isMono ? [0.42, 0.42, 0.42] : rgb} amplitude={1.1} distance={0.1} enableMouseInteraction />
+          <Threads color={threadsColor} amplitude={1.1} distance={0.1} enableMouseInteraction />
         )}
         {bg === 'liquid-chrome' && (
-          <LiquidChrome baseColor={isMono ? [0.06, 0.06, 0.07] : [rgb[0] * 0.5, rgb[1] * 0.5, rgb[2] * 0.5]} speed={0.14} amplitude={0.42} frequencyX={2.6} frequencyY={2} interactive />
+          <LiquidChrome baseColor={chromeColor} speed={0.14} amplitude={0.42} frequencyX={2.6} frequencyY={2} interactive />
         )}
       </div>
       {/* scrim: keep the headline readable over a busy background. the webgl

@@ -121,30 +121,36 @@ const debounce = <T extends (...a: any[]) => void>(fn: T, wait: number) => {
     t = setTimeout(() => fn(...a), wait);
   };
 };
+// pick the size for the current viewport. the effect depends on plain values
+// only, so the resize listener subscribes once
 const useResponsiveDimension = (
   responsive: boolean | undefined,
   config: Partial<GradualBlurProps>,
   key: keyof GradualBlurProps
 ) => {
-  const [val, setVal] = useState<any>(config[key]);
+  const cap = (key as string).charAt(0).toUpperCase() + (key as string).slice(1);
+  const base = (config as any)[key];
+  const mobile = (config as any)['mobile' + cap];
+  const tablet = (config as any)['tablet' + cap];
+  const desktop = (config as any)['desktop' + cap];
+
+  const [val, setVal] = useState<any>(base);
   useEffect(() => {
     if (!responsive) return;
     const calc = () => {
       const w = window.innerWidth;
-      let v: any = config[key];
-      const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
-      const k = cap(key as string);
-      if (w <= 480 && (config as any)['mobile' + k]) v = (config as any)['mobile' + k];
-      else if (w <= 768 && (config as any)['tablet' + k]) v = (config as any)['tablet' + k];
-      else if (w <= 1024 && (config as any)['desktop' + k]) v = (config as any)['desktop' + k];
+      let v: any = base;
+      if (w <= 480 && mobile) v = mobile;
+      else if (w <= 768 && tablet) v = tablet;
+      else if (w <= 1024 && desktop) v = desktop;
       setVal(v);
     };
     const deb = debounce(calc, 100);
     calc();
     window.addEventListener('resize', deb);
     return () => window.removeEventListener('resize', deb);
-  }, [responsive, config, key]);
-  return responsive ? val : (config as any)[key];
+  }, [responsive, base, mobile, tablet, desktop]);
+  return responsive ? val : base;
 };
 
 const useIntersectionObserver = (ref: React.RefObject<HTMLDivElement>, shouldObserve: boolean = false) => {
@@ -162,7 +168,22 @@ const useIntersectionObserver = (ref: React.RefObject<HTMLDivElement>, shouldObs
   return isVisible;
 };
 
-const GradualBlur: React.FC<GradualBlurProps> = props => {
+// props arrive as a new object on every render. keep one identity while the
+// values match, so the memos below really cache. the signature is a plain
+// string, so useMemo does the holding and nothing is written during render
+const useStableProps = (next: GradualBlurProps): GradualBlurProps => {
+  // children and style can hold anything, so they stay compared by reference
+  const { children, style, ...rest } = next;
+  const sig = (Object.keys(rest) as (keyof typeof rest)[])
+    .sort()
+    .map(k => k + ':' + String(rest[k]))
+    .join('|');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  return useMemo(() => next, [sig, children, style]);
+};
+
+const GradualBlur: React.FC<GradualBlurProps> = rawProps => {
+  const props = useStableProps(rawProps);
   const containerRef = useRef<HTMLDivElement>(null) as React.RefObject<HTMLDivElement>;
   const [isHovered, setIsHovered] = useState(false);
 
