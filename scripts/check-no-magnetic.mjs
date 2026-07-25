@@ -1,8 +1,12 @@
 import fs from 'node:fs';
 
-const page = fs.readFileSync('app/page.tsx', 'utf8');
+// markup lives in app/site.tsx, app/page.tsx is only a server wrapper
+const site = fs.readFileSync('app/site.tsx', 'utf8');
 
-if (/\bmag(?:Move|Leave|Down|Up|Reset)?\b/.test(page) || /\{\.\.\.mag\}/.test(page)) {
+if (!/className="site-page"/.test(site)) {
+  throw new Error('site markup not found, this check reads the wrong file');
+}
+if (/\bmag(?:Move|Leave|Down|Up|Reset)?\b/.test(site) || /\{\.\.\.mag\}/.test(site)) {
   throw new Error('magnetic button behavior is still present');
 }
 

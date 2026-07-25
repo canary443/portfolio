@@ -55,7 +55,7 @@ Beams, LightRays, Particles, Iridescence, LiquidEther, Prism, Orb, LetterGlitch,
 ## Codebase facts (as of the merge that introduced this system)
 
 ### Stack
-- Next.js 14 App Router, React 18, TypeScript, Tailwind v3 with **preflight OFF** (Tailwind is
+- Next.js 15 App Router, React 19, TypeScript, Tailwind v3 with **preflight OFF** (Tailwind is
   only used by the animate-ui icons; the site is hand-styled with inline styles + CSS vars).
 - Deps: `lenis` (smooth scroll), `motion` v12 (framer-motion successor, import from `motion/react`),
   `@vercel/blob`, `clsx`, `tailwind-merge`. `cn()` in `lib/utils.ts`.
