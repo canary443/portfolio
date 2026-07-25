@@ -1,5 +1,6 @@
 // admin session api: post = login, get = check, delete = logout
 import { NextRequest, NextResponse } from 'next/server';
+import { checkBotId } from 'botid/server';
 import { MAX_AGE, makeToken, same, validToken } from '@/lib/session';
 
 export const runtime = 'nodejs';
@@ -18,6 +19,18 @@ const sweep = (now: number) => {
   attempts.forEach((v, k) => { if (v.until < now - 3600000 && v.fails === 0) attempts.delete(k); });
 };
 
+// botid: a script only guesses the password if it can send the login post, and
+// only a real browser on /admin can sign that post. a bot verdict is trusted,
+// but a check that throws is not: the owner must never be locked out by an
+// outage here. the password and the lockout above still guard the route.
+const isBot = async () => {
+  try {
+    return (await checkBotId()).isBot;
+  } catch {
+    return false;
+  }
+};
+
 export async function GET(req: NextRequest) {
   return NextResponse.json({ ok: validToken(req.cookies.get('zx_admin')?.value) });
 }
@@ -33,6 +46,9 @@ export async function POST(req: NextRequest) {
   if (a.until > now) {
     return NextResponse.json({ ok: false, wait: Math.ceil((a.until - now) / 1000) }, { status: 429 });
   }
+
+  // a bot never gets to try a password, so it can not spend the attempt budget
+  if (await isBot()) return NextResponse.json({ ok: false }, { status: 403 });
 
   const body = await req.json().catch(() => null);
   const given = typeof body?.pass === 'string' ? body.pass : '';

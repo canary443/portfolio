@@ -14,11 +14,31 @@ export const metadata: Metadata = {
   metadataBase: new URL('https://aimwork.space'),
   title: 'AimworkSpace',
   description: 'Full stack dev: sites, Telegram bots and automation. Built in 3-14 days, reply in under 24h. Fixed price per project.',
+  // one page, one address. the admin preview opens /?preview=1 and this keeps
+  // that from counting as a second page
+  alternates: { canonical: '/' },
+  robots: {
+    index: true,
+    follow: true,
+    // let google show the full text and a big picture, not a cut snippet
+    googleBot: { index: true, follow: true, 'max-snippet': -1, 'max-image-preview': 'large', 'max-video-preview': -1 }
+  },
+  // codes from google search console and yandex webmaster. set them in the
+  // vercel env vars, see README. with nothing set no tag is printed
+  verification: {
+    google: process.env.GOOGLE_SITE_VERIFICATION,
+    yandex: process.env.YANDEX_VERIFICATION
+  },
   openGraph: {
     title: 'aimwork.space',
     description: PREVIEW,
     type: 'website',
-    images: [{ url: '/assets/og.jpg', width: 800, height: 800 }]
+    url: '/',
+    siteName: 'AimworkSpace',
+    // both languages live on one url, so ru is listed as the second one
+    locale: 'en_US',
+    alternateLocale: ['ru_RU'],
+    images: [{ url: '/assets/og.jpg', width: 800, height: 800, alt: 'AimworkSpace' }]
   },
   twitter: {
     card: 'summary',

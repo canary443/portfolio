@@ -1,6 +1,8 @@
-// report-only csp: the site inlines styles and one script, and still loads
-// icons and fonts from other hosts. another agent is moving those to local
-// files - make the csp blocking only after that lands.
+import { withBotId } from 'botid/next/config';
+
+// report-only csp: the site inlines styles and a few scripts. fonts and icons
+// are local now, so these rules match what the page loads. before making it
+// blocking, keep 'unsafe-inline' in script-src: botid ships an inline script.
 const csp = [
   "default-src 'self'",
   "img-src 'self' data: blob: https:",
@@ -35,4 +37,6 @@ const nextConfig = {
   }
 };
 
-export default nextConfig;
+// botid: adds same origin rewrites, so the bot check script is served from our
+// own domain and no third party host is called from the browser
+export default withBotId(nextConfig);

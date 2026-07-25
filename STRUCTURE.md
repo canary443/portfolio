@@ -3,14 +3,16 @@
 ```
 /
 ├── app/
-│   ├── layout.tsx                # metadata + og/twitter, JSON-LD, <html lang> from cookie/header, analytics
+│   ├── layout.tsx                # metadata + og/twitter, canonical, search console codes, JSON-LD, <html lang> from cookie/header, analytics
 │   ├── globals.css               # keyframes, hover states, reduced-motion rules
 │   ├── fonts.css                 # @font-face for the self hosted woff2 files (no cdn)
 │   ├── icon.svg                  # favicon
 │   ├── page.tsx                  # server wrapper: reads content, picks the language, renders site.tsx
 │   ├── site.tsx                  # main site markup (client component)
-│   ├── robots.ts                 # robots.txt: allow all, disallow /admin and /api
+│   ├── robots.ts                 # robots.txt: allow all (ai crawlers too), disallow /admin, /api and ?preview=
 │   ├── sitemap.ts                # sitemap.xml: the site is one url
+│   ├── llms.txt/route.ts         # the site as plain text for assistants, built from the live content
+│   ├── admin/layout.tsx          # admin-only: page title, noindex, botid client script
 │   ├── admin/page.tsx            # admin panel (client component)
 │   └── api/
 │       ├── admin/session/route.ts # login (POST), session check (GET), logout (DELETE)

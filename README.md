@@ -33,9 +33,24 @@ copy `.env.example` to `.env.local` and set:
 - `BLOB_READ_WRITE_TOKEN` - vercel blob store that holds `site.json`
 - `CRON_SECRET` - locks `/api/keepalive`; the vercel cron sends it as `Authorization: Bearer <value>`, and an empty value leaves the route open
 
+- `GOOGLE_SITE_VERIFICATION` / `YANDEX_VERIFICATION` - the `content` value of the meta tag google search console and yandex webmaster hand out. optional: with nothing set no tag is printed
+
 media uploads also need supabase, and those keys are not in `.env.example` yet - copy them from the supabase project into `.env.local`:
 
 - `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` (the upload api falls back to `SUPABASE_ANON_KEY`, and the daily keepalive cron in `vercel.json` uses the anon key). without them the upload api answers "no supabase" and the media stays inline as base64
+
+## search engines
+
+what the site serves crawlers:
+
+- `/robots.txt` (`app/robots.ts`) - allow everything except `/admin`, `/api` and `/*?preview=`. ai crawlers (GPTBot, ClaudeBot, PerplexityBot and friends) are listed and allowed on purpose: a portfolio wants to be quotable
+- `/sitemap.xml` (`app/sitemap.ts`) - the one url
+- `/llms.txt` (`app/llms.txt/route.ts`) - about, services, work and faq as plain text, built from the live content so it cannot drift. cached for an hour
+- `app/layout.tsx` - canonical `/`, `index, follow` plus the googlebot preview limits, og/twitter, ProfessionalService json-ld, and the two verification meta tags when the env vars are set
+
+both languages share one url, so there is no hreflang on purpose - `og:locale` is `en_US` with `ru_RU` as the alternate.
+
+registering the site is a one-time manual job: add the property in [search console](https://search.google.com/search-console) and [yandex webmaster](https://webmaster.yandex.ru/), pick the html-tag method, put the code in the vercel env var, redeploy, then hit verify and submit `https://aimwork.space/sitemap.xml` in both.
 
 ## notes
 
