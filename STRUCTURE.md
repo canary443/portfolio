@@ -94,6 +94,7 @@ Full type: `SiteData` in `lib/data.ts`.
   projects:  [{ id, name, role, roleRu, from, to, link, img, changelog[] }],
   faq:       [{ id, q, qRu, a, aRu }],  // order = display order (drag in admin)
   // appearance, all admin-picked (docs/EFFECTS.md):
+  showServices, showStack,               // whole blocks the admin can hide
   heroBg, heroPreset, cursorStyle,      // background mode, webgl palette, cursor
   heroArt, heroArtCustom,               // hero art choice, ascii upload
   heroArtMedia, heroArtMediaPoster,     // 'media' art: plain photo / gif / video + still frame

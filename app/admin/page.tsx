@@ -28,6 +28,12 @@ const I18N_FIELDS: [keyof Dict, string][] = [
 type FxKey = 'fxGradualBlur' | 'fxHeadlineReveal' | 'fxCardTilt';
 const HERO_BG_OPTS: [HeroBg, string][] = [['image', 'Art only'], ['gif', 'GIF / video'], ['pixel-blast', 'Pixel blast'], ['dither', 'Dither'], ['threads', 'Threads'], ['liquid-chrome', 'Liquid chrome']];
 const CURSOR_OPTS: [CursorStyle, string][] = [['dot', 'Dot'], ['pixel-trail', 'Pixel trail'], ['target', 'Target'], ['native', 'Native']];
+// whole page blocks the owner can switch off
+type SectionKey = 'showServices' | 'showStack';
+const SECTION_TOGGLES: [SectionKey, string, string][] = [
+  ['showServices', 'Services block', 'the "what I do" cards. off also removes the nav link'],
+  ['showStack', 'Tech stack strip', 'the moving row of language and tool logos']
+];
 const FX_TOGGLES: [FxKey, string, boolean][] = [
   ['fxGradualBlur', 'Gradual blur seams', true],
   ['fxHeadlineReveal', 'Hero headline reveal', true],
@@ -104,7 +110,7 @@ const SECTION_KEYS: Partial<Record<Sec, (keyof SiteData)[]>> = {
   works: ['works'],
   projects: ['projects'],
   faq: ['faq'],
-  settings: ['telegram', 'github', 'email', 'heroBg', 'heroArt', 'heroArtCustom', 'heroArtMedia', 'heroArtMediaPoster', 'heroArtMediaSound', 'heroArtScale', 'heroBgGif', 'heroBgGifPoster', 'heroBgGifOpacity', 'heroPreset', 'cursorStyle', 'fxGradualBlur', 'fxHeadlineReveal', 'fxCardTilt', 'fontRu'],
+  settings: ['telegram', 'github', 'email', 'showServices', 'showStack', 'heroBg', 'heroArt', 'heroArtCustom', 'heroArtMedia', 'heroArtMediaPoster', 'heroArtMediaSound', 'heroArtScale', 'heroBgGif', 'heroBgGifPoster', 'heroBgGifOpacity', 'heroPreset', 'cursorStyle', 'fxGradualBlur', 'fxHeadlineReveal', 'fxCardTilt', 'fontRu'],
   i18n: ['i18n', 'i18nFontRu']
 };
 // every key some page owns; a whole-site import restores all of them
@@ -1127,7 +1133,17 @@ export default function Admin() {
                 </div>
               </div>
 
+              {/* whole blocks of the page. off also drops the nav link */}
               <div style={{ marginTop: 8, borderTop: '1px solid #1a1a1a' }}>
+                {SECTION_TOGGLES.map(([key, label, note]) => {
+                  const on = data[key] !== false;
+                  return (
+                    <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: '1px solid #1a1a1a' }}>
+                      <span style={{ fontSize: 14, flex: 1 }}>{label}<span style={{ display: 'block', fontSize: 12, color: '#474747', marginTop: 2 }}>{note}</span></span>
+                      <span className="aghost" style={{ padding: '6px 18px', fontSize: 13, borderColor: on ? '#474747' : '#2a2a2a', color: on ? '#f3f3f3' : '#9c9c9c' }} onClick={() => persist({ ...data, [key]: !on })}>{on ? 'Shown' : 'Hidden'}</span>
+                    </div>
+                  );
+                })}
                 {FX_TOGGLES.map(([key, label, def]) => {
                   const on = data[key] === undefined ? def : !!data[key];
                   return (

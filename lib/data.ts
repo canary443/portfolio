@@ -62,6 +62,9 @@ export interface SiteData {
   aboutShowBased?: boolean; aboutShowFlag?: boolean;
   telegram: string; github: string; email: string;
   services: Service[]; works: Work[]; projects: TeamProject[]; faq: FaqItem[];
+  // whole blocks the admin can hide. the services nav link goes with its section
+  showServices?: boolean;
+  showStack?: boolean;
   // effects (flat fields so old saved data backfills from defaults)
   heroBg?: HeroBg; heroPreset?: string; cursorStyle?: CursorStyle;
   heroArt?: HeroArt; heroArtCustom?: string | null;
@@ -99,6 +102,8 @@ export const DEFAULTS: SiteData = {
   telegram: 'sickbuddy',
   github: 'canary443',
   email: 'contact@leet-cheats.xyz',
+  showServices: true,
+  showStack: true,
   heroBg: 'image',
   heroArt: 'cat',
   heroArtCustom: null,

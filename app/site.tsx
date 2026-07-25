@@ -144,6 +144,9 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
   // is not available - never during the brief window before that is resolved,
   // so effect backgrounds do not flash the hands on load
   const showImage = config.showMap && !gifBgOn && (heroBg === 'image' || (fxResolved && !fxCapable));
+  // whole blocks the admin can hide. the nav link goes with its section
+  const servicesOn = data.showServices !== false;
+  const stackOn = data.showStack !== false;
   const gradualOn = data.fxGradualBlur !== false;
   const headlineOn = data.fxHeadlineReveal !== false && motionOk;
   const tiltOn = !!data.fxCardTilt && fineOk;
@@ -505,7 +508,7 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
         }}>
           <button type="button" className="bare" aria-label="back to top" onClick={goTop} style={{ fontSize: 16, letterSpacing: '-0.01em', whiteSpace: 'nowrap', userSelect: 'none' }}>AimworkSpace</button>
           <div className="nav-center" style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-50%)', display: 'flex', gap: 22, fontSize: 14 }}>
-            <a href="#services" className="navlnk" style={rf('navS')}>{t.navS}</a>
+            {servicesOn && <a href="#services" className="navlnk" style={rf('navS')}>{t.navS}</a>}
             <a href="#projects" className="navlnk" style={rf('navP')}>{t.navP}</a>
             <a href="#contact" className="navlnk" style={rf('navC')}>{t.navC}</a>
           </div>
@@ -616,7 +619,8 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
       {/* sheet that covers the hero */}
       <div style={{ position: 'relative', zIndex: 2, background: 'var(--bg)', borderRadius: '26px 26px 0 0', borderTop: '1px solid var(--line)', boxShadow: '0 -40px 80px rgba(0,0,0,.6)' }}>
 
-        {/* services */}
+        {/* services, hidden from the admin with one switch */}
+        {servicesOn && (
         <div id="services" style={{ maxWidth: 1200, margin: '0 auto', padding: '110px 28px 0' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 18, marginBottom: 30 }}>
             <span style={{ fontSize: 13, letterSpacing: '.12em', color: 'var(--muted)' }}>{'// SERVICES'}</span>
@@ -653,13 +657,17 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
             })}
           </div>
         </div>
+        )}
 
-        {/* stack loop: smooth velocity, links, hover scale + pause, edge fade */}
-        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '64px 28px 0' }}>
+        {/* stack loop: smooth velocity, links, hover scale + pause, edge fade.
+            the top padding covers for the services block when it is hidden */}
+        {stackOn && (
+        <div style={{ maxWidth: 1200, margin: '0 auto', padding: (servicesOn ? '64px' : '110px') + ' 28px 0' }}>
           <div style={{ borderTop: '1px solid var(--line)', borderBottom: '1px solid var(--line)', padding: '18px 0', overflow: 'hidden' }}>
             <LogoLoop logos={STACK_LOGOS} speed={38} direction="left" gap={44} logoHeight={20} hoverSpeed={0} scaleOnHover fadeOut fadeOutColor="#101010" ariaLabel="Tech stack" />
           </div>
         </div>
+        )}
 
         {/* projects */}
         <div id="projects" style={{ maxWidth: 1200, margin: '0 auto', padding: '110px 28px 0' }}>
