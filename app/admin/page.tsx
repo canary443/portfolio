@@ -21,7 +21,7 @@ const I18N_FIELDS: [keyof Dict, string][] = [
   ['dm', 'Contact: dm text'], ['feat', 'Featured-in label'], ['chlog', 'Changelog label'],
   ['team', 'Badge: team project'], ['madeFor', 'Meta: made for'], ['photoSoon', 'Placeholder: no pic'],
   ['open', 'Modal: open button'], ['close', 'Modal: close button'], ['copied', 'Toast: copied'],
-  ['chat', 'Chat label'], ['soundOff', 'Hero video: mute button label']
+  ['chat', 'Chat label']
 ];
 
 // effect controls, rendered in the settings page

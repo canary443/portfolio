@@ -1,18 +1,13 @@
 'use client';
 // hero art video: it plays through once with sound, then loops muted like a
-// gif. browsers only allow sound after the visitor has done something on the
-// page, so a blocked start plays silent right away and the sound is armed to
-// the first click, key or touch. after the first pass the video stays silent.
+// gif.
+// browsers refuse to start a video with sound until the visitor has clicked or
+// typed somewhere on the page - that is a browser rule, not a setting we own.
+// so when the start is refused the video runs as a silent loop, and the first
+// click, key or touch restarts it from frame one with the sound on. that way
+// the sound pass is always heard whole, never from the middle.
 
-import { useCallback, useEffect, useRef, useState } from 'react';
-
-// small speaker with a slash, shown while the video can still make noise
-const MUTE_ICON = (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-    <path d="M11 5L6 9H2v6h4l5 4V5z" />
-    <path d="M23 9l-6 6M17 9l6 6" />
-  </svg>
-);
+import { useCallback, useEffect, useRef } from 'react';
 
 interface Props {
   src: string;
@@ -24,16 +19,12 @@ interface Props {
   zoom: number;
   // the page moves this element for the parallax
   hold: (el: HTMLElement | null) => void;
-  // label for the mute button, comes from the site dictionary
-  muteLabel: string;
 }
 
-export default function HeroArtVideo({ src, sound, motionOk, style, zoom, hold, muteLabel }: Props) {
+export default function HeroArtVideo({ src, sound, motionOk, style, zoom, hold }: Props) {
   const vid = useRef<HTMLVideoElement | null>(null);
-  // the mute button is only there while the sound pass is really audible
-  const [loud, setLoud] = useState(false);
-  // no more sound: the pass ended, or the visitor turned it off
-  const quiet = useRef(!sound || !motionOk);
+  // the one loud pass is done (or was never wanted)
+  const done = useRef(!sound || !motionOk);
 
   const attach = useCallback((el: HTMLVideoElement | null) => {
     vid.current = el;
@@ -43,48 +34,55 @@ export default function HeroArtVideo({ src, sound, motionOk, style, zoom, hold, 
   useEffect(() => {
     const v = vid.current;
     if (!v || !motionOk) return;
-    quiet.current = !sound;
-    setLoud(false);
+    done.current = !sound;
 
-    const unmute = () => {
+    // silent loop, the way a gif behaves
+    const loop = () => {
       const el = vid.current;
-      if (!el || quiet.current) return;
-      el.muted = false;
-      setLoud(true);
+      if (!el) return;
+      el.muted = true;
+      el.loop = true;
+      el.play().catch(() => {});
     };
-    const arm = () => {
-      window.addEventListener('pointerdown', unmute, { once: true, passive: true });
-      window.addEventListener('keydown', unmute, { once: true });
+    // one pass with sound, always from the first frame
+    const loud = () => {
+      const el = vid.current;
+      if (!el || done.current) return;
+      done.current = true;
+      el.muted = false;
+      el.loop = false;
+      el.currentTime = 0;
+      el.play().catch(loop);
     };
     const drop = () => {
-      window.removeEventListener('pointerdown', unmute);
-      window.removeEventListener('keydown', unmute);
+      ['pointerdown', 'touchend', 'keydown', 'click'].forEach(t =>
+        window.removeEventListener(t, loud, true)
+      );
+    };
+    const wake = () => {
+      // capture, so the sound comes on with the very first interaction
+      ['pointerdown', 'touchend', 'keydown', 'click'].forEach(t =>
+        window.addEventListener(t, loud, { capture: true, once: true })
+      );
     };
 
-    if (!sound) {
-      // plain gif behaviour
-      v.muted = true;
-      v.loop = true;
-      v.play().catch(() => {});
-      return drop;
-    }
+    if (!sound) { loop(); return drop; }
 
-    v.loop = false;
     v.muted = false;
-    v.play().then(() => setLoud(true)).catch(() => {
-      // sound is not allowed yet: run silent and wait for a real gesture
-      v.muted = true;
-      v.play().catch(() => {});
-      arm();
+    v.loop = false;
+    v.play().catch(() => {
+      // sound refused for now: run as a gif until the first real gesture
+      done.current = false;
+      loop();
+      wake();
     });
     return drop;
   }, [src, sound, motionOk]);
 
-  // first pass is over, silent loop from here on
+  // the loud pass is over: silent from here on
   const toLoop = () => {
-    quiet.current = true;
-    setLoud(false);
     const v = vid.current;
+    done.current = true;
     if (!v) return;
     v.muted = true;
     v.loop = true;
@@ -92,36 +90,13 @@ export default function HeroArtVideo({ src, sound, motionOk, style, zoom, hold, 
     v.play().catch(() => {});
   };
 
-  // the visitor wants it silent now. the loop still starts when the pass ends
-  const silence = () => {
-    quiet.current = true;
-    setLoud(false);
-    if (vid.current) vid.current.muted = true;
-  };
-
   return (
-    <>
-      <video
-        key={src} ref={attach} data-zoom={zoom} src={src}
-        playsInline preload="metadata" autoPlay={motionOk}
-        muted={!sound || !motionOk}
-        onEnded={motionOk ? toLoop : undefined}
-        style={style}
-      />
-      {loud && (
-        <button
-          type="button" className="bare" onClick={silence} aria-label={muteLabel} title={muteLabel}
-          style={{
-            position: 'absolute', right: 16, bottom: 16, zIndex: 3,
-            width: 32, height: 32, borderRadius: 999,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: '#f3f3f3', background: 'rgba(10,10,10,.6)',
-            border: '1px solid rgba(255,255,255,.14)',
-            backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
-            transition: 'transform .15s var(--ease), background .15s ease'
-          }}
-        >{MUTE_ICON}</button>
-      )}
-    </>
+    <video
+      key={src} ref={attach} data-zoom={zoom} src={src}
+      playsInline preload="metadata" autoPlay={motionOk}
+      muted={!sound || !motionOk}
+      onEnded={motionOk ? toLoop : undefined}
+      style={style}
+    />
   );
 }

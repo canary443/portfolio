@@ -598,7 +598,7 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
                   return (
                     <HeroArtVideo
                       key={art.src} src={art.src} zoom={zoom} style={box} hold={hold}
-                      sound={data.heroArtMediaSound !== false} motionOk={motionOk} muteLabel={t.soundOff}
+                      sound={data.heroArtMediaSound !== false} motionOk={motionOk}
                     />
                   );
                 }
