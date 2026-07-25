@@ -69,6 +69,9 @@ export interface SiteData {
   // poster is a still frame for visitors who ask for less motion
   heroArtMedia?: string | null;
   heroArtMediaPoster?: string | null;
+  // a video hero art plays its first pass with sound, then loops silent.
+  // false makes it a silent loop from the first frame
+  heroArtMediaSound?: boolean;
   // percent multiplier on the art's base width, 100 = as designed
   heroArtScale?: number;
   // gif / video behind the hero when heroBg is 'gif'. poster is a still frame
@@ -101,6 +104,7 @@ export const DEFAULTS: SiteData = {
   heroArtCustom: null,
   heroArtMedia: null,
   heroArtMediaPoster: null,
+  heroArtMediaSound: true,
   heroArtScale: 100,
   heroBgGif: null,
   heroBgGifPoster: null,

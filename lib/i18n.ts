@@ -13,7 +13,8 @@ export const T = {
     ctH: 'Got an idea? Write me.', ctSub: 'Reply within a day, usually faster.',
     dm: 'or just dm', madeFor: 'made for ', photoSoon: 'NO PIC', team: 'TEAM PROJECT',
     copied: 'copied', open: 'Open project', close: 'Close',
-    feat: '// PROJECTS I WAS PART OF', chlog: 'CHANGELOG'
+    feat: '// PROJECTS I WAS PART OF', chlog: 'CHANGELOG',
+    soundOff: 'turn the sound off'
   },
   ru: {
     navS: 'Услуги', navP: 'Проекты', navC: 'Контакты', chat: 'Написать',
@@ -25,7 +26,8 @@ export const T = {
     ctH: 'Есть идея? Напиши.', ctSub: 'Отвечаю в течение дня, чаще быстрее.',
     dm: 'или просто в лс', madeFor: '', photoSoon: 'NO PIC', team: 'В КОМАНДЕ',
     copied: 'скопировано', open: 'Открыть проект', close: 'Закрыть',
-    feat: '// ПРОЕКТЫ, В КОТОРЫХ УЧАСТВОВАЛ', chlog: 'ИЗМЕНЕНИЯ'
+    feat: '// ПРОЕКТЫ, В КОТОРЫХ УЧАСТВОВАЛ', chlog: 'ИЗМЕНЕНИЯ',
+    soundOff: 'выключить звук'
   }
 } as const;
 

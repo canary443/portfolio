@@ -21,7 +21,7 @@ const I18N_FIELDS: [keyof Dict, string][] = [
   ['dm', 'Contact: dm text'], ['feat', 'Featured-in label'], ['chlog', 'Changelog label'],
   ['team', 'Badge: team project'], ['madeFor', 'Meta: made for'], ['photoSoon', 'Placeholder: no pic'],
   ['open', 'Modal: open button'], ['close', 'Modal: close button'], ['copied', 'Toast: copied'],
-  ['chat', 'Chat label']
+  ['chat', 'Chat label'], ['soundOff', 'Hero video: mute button label']
 ];
 
 // effect controls, rendered in the settings page
@@ -104,7 +104,7 @@ const SECTION_KEYS: Partial<Record<Sec, (keyof SiteData)[]>> = {
   works: ['works'],
   projects: ['projects'],
   faq: ['faq'],
-  settings: ['telegram', 'github', 'email', 'heroBg', 'heroArt', 'heroArtCustom', 'heroArtMedia', 'heroArtMediaPoster', 'heroArtScale', 'heroBgGif', 'heroBgGifPoster', 'heroBgGifOpacity', 'heroPreset', 'cursorStyle', 'fxGradualBlur', 'fxHeadlineReveal', 'fxCardTilt', 'fontRu'],
+  settings: ['telegram', 'github', 'email', 'heroBg', 'heroArt', 'heroArtCustom', 'heroArtMedia', 'heroArtMediaPoster', 'heroArtMediaSound', 'heroArtScale', 'heroBgGif', 'heroBgGifPoster', 'heroBgGifOpacity', 'heroPreset', 'cursorStyle', 'fxGradualBlur', 'fxHeadlineReveal', 'fxCardTilt', 'fontRu'],
   i18n: ['i18n', 'i18nFontRu']
 };
 // every key some page owns; a whole-site import restores all of them
@@ -1073,7 +1073,18 @@ export default function Admin() {
                     )}
                   </div>
                 )}
-                {art === 'media' && <Hint>photo, gif, webp or a small mp4/webm, up to ~12mb. it keeps its own colors and its animation</Hint>}
+                {art === 'media' && <>
+                  <Hint>photo, gif, webp or a small mp4/webm, up to ~12mb. it keeps its own colors and its animation</Hint>
+                  {/* only a video can make noise, so the switch is for videos */}
+                  {!!data.heroArtMedia && isVideoSrc(data.heroArtMedia) && (
+                    <div style={{ marginTop: 10 }}>
+                      <Chip on={data.heroArtMediaSound !== false} onClick={() => persist({ ...data, heroArtMediaSound: data.heroArtMediaSound === false })}>
+                        Sound on the first play: {data.heroArtMediaSound === false ? 'Off' : 'On'}
+                      </Chip>
+                      <Hint>on: the video runs once with sound, then loops silent like a gif. browsers only allow sound after the visitor clicks somewhere, so before that first click it runs silent and a small mute button shows up while it is audible. off: silent loop from the first frame</Hint>
+                    </div>
+                  )}
+                </>}
 
                 {/* size multiplier for the picked art; saves when the slider is released */}
                 <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 12 }}>

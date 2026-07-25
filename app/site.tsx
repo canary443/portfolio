@@ -17,6 +17,7 @@ import HeroFx from '@/components/fx/HeroFx';
 import PixelTrailCursor from '@/components/fx/PixelTrailCursor';
 import TargetCursorFx from '@/components/fx/TargetCursorFx';
 import HeadlineReveal from '@/components/fx/HeadlineReveal';
+import HeroArtVideo from '@/components/fx/HeroArtVideo';
 import { Reveal } from '@/components/animate-ui/primitives/effects/reveal';
 import GradualBlur from '@/components/GradualBlur';
 import LogoLoop from '@/components/LogoLoop';
@@ -593,7 +594,13 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
               if (kind === 'media') {
                 const still = !motionOk && data.heroArtMediaPoster ? data.heroArtMediaPoster : null;
                 if (!still && isVideoSrc(art.src)) {
-                  return <video key={art.src} ref={hold} data-zoom={zoom} src={art.src} muted playsInline preload="metadata" autoPlay={motionOk} loop={motionOk} style={box} />;
+                  // one pass with sound, then a silent loop like a gif
+                  return (
+                    <HeroArtVideo
+                      key={art.src} src={art.src} zoom={zoom} style={box} hold={hold}
+                      sound={data.heroArtMediaSound !== false} motionOk={motionOk} muteLabel={t.soundOff}
+                    />
+                  );
                 }
                 return <img key={still || art.src} ref={hold} data-zoom={zoom} src={still || art.src} alt="" fetchPriority="high" style={box} />;
               }
