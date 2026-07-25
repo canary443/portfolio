@@ -12,6 +12,7 @@ import { loadRemote, fetchRub, SiteData, LogEntry } from '@/lib/data';
 import { T, Lang, type Dict } from '@/lib/i18n';
 import { config } from '@/lib/config';
 import { webglSupported } from '@/lib/fx';
+import { isVideoSrc } from '@/lib/img';
 import HeroFx from '@/components/fx/HeroFx';
 import PixelTrailCursor from '@/components/fx/PixelTrailCursor';
 import TargetCursorFx from '@/components/fx/TargetCursorFx';
@@ -20,6 +21,10 @@ import { Reveal } from '@/components/animate-ui/primitives/effects/reveal';
 import GradualBlur from '@/components/GradualBlur';
 import LogoLoop from '@/components/LogoLoop';
 import MediaCarousel, { type Media } from '@/components/MediaCarousel';
+import {
+  PythonIcon, RustIcon, CppIcon, TypeScriptIcon, JavaScriptIcon, ReactIcon, ViteIcon, NextIcon,
+  GitIcon, ClaudeIcon, PostgresIcon, RedisIcon, TelegramIcon, GithubIcon, type BrandIconProps
+} from '@/components/BrandIcons';
 interface Item {
   id: string; media: Media[];
   title: string; link: string; sub: string; cat: string;
@@ -32,20 +37,20 @@ interface Item {
 const EASE = 'cubic-bezier(.22,1,.36,1)';
 // sites, bots, automation, custom code
 const SERVICE_ICONS = { s1: Layers, s2: Bot, s3: Cog, s4: Binary } as const;
-// [simpleicons slug, label, official link]
-const STACK: [string, string, string][] = [
-  ['python', 'Python', 'https://www.python.org'], ['rust', 'Rust', 'https://www.rust-lang.org'],
-  ['cplusplus', 'C++', 'https://isocpp.org'], ['typescript', 'TypeScript', 'https://www.typescriptlang.org'],
-  ['javascript', 'JavaScript', 'https://developer.mozilla.org/docs/Web/JavaScript'], ['react', 'React', 'https://react.dev'],
-  ['vite', 'Vite', 'https://vite.dev'], ['nextdotjs', 'Next.js', 'https://nextjs.org'],
-  ['git', 'Git', 'https://git-scm.com'], ['claude', 'Agents / Claude', 'https://www.anthropic.com/claude'],
-  ['postgresql', 'SQL', 'https://www.postgresql.org'], ['redis', 'Redis', 'https://redis.io']
+// [brand icon, label, official link]
+const STACK: [React.ComponentType<BrandIconProps>, string, string][] = [
+  [PythonIcon, 'Python', 'https://www.python.org'], [RustIcon, 'Rust', 'https://www.rust-lang.org'],
+  [CppIcon, 'C++', 'https://isocpp.org'], [TypeScriptIcon, 'TypeScript', 'https://www.typescriptlang.org'],
+  [JavaScriptIcon, 'JavaScript', 'https://developer.mozilla.org/docs/Web/JavaScript'], [ReactIcon, 'React', 'https://react.dev'],
+  [ViteIcon, 'Vite', 'https://vite.dev'], [NextIcon, 'Next.js', 'https://nextjs.org'],
+  [GitIcon, 'Git', 'https://git-scm.com'], [ClaudeIcon, 'Agents / Claude', 'https://www.anthropic.com/claude'],
+  [PostgresIcon, 'SQL', 'https://www.postgresql.org'], [RedisIcon, 'Redis', 'https://redis.io']
 ];
 // logo-loop items: icon + label, each linking to the tech's site
-const STACK_LOGOS = STACK.map(([slug, label, href]) => ({
+const STACK_LOGOS = STACK.map(([Icon, label, href]) => ({
   node: (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
-      <img src={`https://cdn.simpleicons.org/${slug}/9c9c9c`} loading="lazy" alt="" style={{ width: 18, height: 18, display: 'block', opacity: .75 }} />
+      <Icon size={18} color="#9c9c9c" style={{ opacity: .75 }} />
       <span style={{ fontSize: 14, color: 'var(--muted)', whiteSpace: 'nowrap' }}>{label}</span>
     </span>
   ),
@@ -54,8 +59,19 @@ const STACK_LOGOS = STACK.map(([slug, label, href]) => ({
   href
 }));
 
-// language dropdown chevron (path inherits the svg fill)
+// natural pixel ratio of every built-in hero art, so the row holds its
+// height before the file decodes
+const ART_RATIO: Record<string, string> = {
+  cat: '3000 / 1000',
+  braille: '1600 / 1765',
+  hands: '3217 / 935'
+};
+
+// chevron shared by the language dropdown and the faq rows (inherits the svg fill)
 const CHEV = (<path d="M10.0878 4.83761C10.3157 4.6098 10.6849 4.6098 10.9127 4.83761C11.1405 5.06542 11.1405 5.43469 10.9127 5.66248L7.41272 9.16248C7.18493 9.39027 6.81566 9.39024 6.58785 9.16248L3.08785 5.66248C2.86004 5.43467 2.86004 5.06542 3.08785 4.83761C3.31565 4.6098 3.68491 4.6098 3.91272 4.83761L7.00028 7.92518L10.0878 4.83761Z" />);
+// same chevron for a faq row. the color comes from the parent, which also
+// holds the rotate, so this stays static and is built once
+const FAQ_CHEV = (<svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">{CHEV}</svg>);
 
 // which cyrillic font backs satoshi in the russian locale
 const RU_FONT_STACK: Record<string, string> = {
@@ -95,10 +111,16 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
   const [fxResolved, setFxResolved] = useState(false); // capability check has run
 
   const cursorRef = useRef<HTMLDivElement>(null);
-  const handsRef = useRef<HTMLImageElement>(null);
+  // hero art element for the parallax; it can be an img or a video
+  const handsRef = useRef<HTMLElement | null>(null);
   const heroRef = useRef<HTMLDivElement>(null);
   const lenisRef = useRef<Lenis | null>(null);
   const langRef = useRef<HTMLDivElement>(null);
+  const langBtnRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const closeBtnRef = useRef<HTMLButtonElement>(null);
+  // element that opened the modal, focus goes back to it on close
+  const lastFocus = useRef<HTMLElement | null>(null);
   const modalOpen = useRef(false);
   const toastT = useRef<ReturnType<typeof setTimeout>>(undefined);
   const closeT = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -142,18 +164,31 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
     setFxResolved(true);
   }, []);
 
-  // close the language menu on an outside click
+  // the switch is client side, so keep <html lang> in step for screen readers
+  useEffect(() => { document.documentElement.lang = lang; }, [lang]);
+
+  // close the language menu on an outside click, or on escape with focus back
   useEffect(() => {
     if (!langOpen) return;
     const onDown = (e: MouseEvent) => { if (!langRef.current?.contains(e.target as Node)) setLangOpen(false); };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      setLangOpen(false);
+      langBtnRef.current?.focus();
+    };
     document.addEventListener('mousedown', onDown);
-    return () => document.removeEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
   }, [langOpen]);
 
-  // modal open: freeze scroll under it
+  // modal open: freeze scroll under it and move focus into the dialog.
+  // preventScroll keeps the panel at the top, where it opened
   useEffect(() => {
     modalOpen.current = !!modal;
-    if (modal) { lenisRef.current?.stop(); document.body.style.overflow = 'hidden'; }
+    if (modal) { lenisRef.current?.stop(); document.body.style.overflow = 'hidden'; closeBtnRef.current?.focus({ preventScroll: true }); }
     else { lenisRef.current?.start(); document.body.style.overflow = ''; }
   }, [modal]);
 
@@ -202,7 +237,11 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
       const y = window.scrollY;
       setScrolled(y > 40);
       if (!motionOk) return;
-      if (handsRef.current) handsRef.current.style.transform = 'translate3d(0,' + Math.min(y * .1, 130) + 'px,0) scale(1.06)';
+      if (handsRef.current) {
+        // keep the art's own zoom: a plain photo is not cropped, ascii art is
+        const z = handsRef.current.dataset.zoom || '1.06';
+        handsRef.current.style.transform = 'translate3d(0,' + Math.min(y * .1, 130) + 'px,0) scale(' + z + ')';
+      }
       if (heroRef.current) {
         const hp = Math.min(y / (window.innerHeight * .9 || 1), 1);
         heroRef.current.style.opacity = String(1 - hp * .55);
@@ -287,24 +326,45 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
     return () => { clearTimeout(t); io.disconnect(); };
   }, [data]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // close with a short exit animation, then unmount
+  // close with a short exit animation, then unmount and give focus back
   const closeModal = useCallback(() => {
     if (!modalOpen.current) return;
     setClosing(true);
     clearTimeout(closeT.current);
-    closeT.current = setTimeout(() => { setModal(null); setClosing(false); }, 250);
+    closeT.current = setTimeout(() => {
+      setModal(null);
+      setClosing(false);
+      const back = lastFocus.current;
+      if (back?.isConnected) back.focus({ preventScroll: true });
+    }, 250);
   }, []);
 
   const openModal = useCallback((w: Item, ci: number) => {
+    lastFocus.current = document.activeElement as HTMLElement | null;
     clearTimeout(closeT.current);
     setClosing(false);
     setModal(w);
     setPic(ci);
   }, []);
 
-  // esc closes modal
+  // esc closes the modal, and tab stays inside it. the listener sits on the
+  // window, not on the dialog: clicking plain text inside moves focus to the
+  // body, and a handler on the dialog would never see the key after that
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') closeModal(); };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { closeModal(); return; }
+      const box = dialogRef.current;
+      if (e.key !== 'Tab' || !box) return;
+      const els = Array.from(box.querySelectorAll<HTMLElement>('a[href],button,[tabindex]:not([tabindex="-1"])'))
+        .filter(el => !el.hasAttribute('disabled') && el.offsetParent !== null);
+      if (!els.length) return;
+      const first = els[0], last = els[els.length - 1];
+      // focus left the dialog, or sits on the edge: pull it back inside
+      if (!box.contains(document.activeElement) || document.activeElement === (e.shiftKey ? first : last)) {
+        e.preventDefault();
+        (e.shiftKey ? last : first).focus();
+      }
+    };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [closeModal]);
@@ -315,6 +375,8 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
     document.cookie = 'zx_lang=' + l + ';path=/;max-age=31536000;samesite=lax';
     setLangState(l);
     setLangOpen(false);
+    // the menu is gone, so focus goes back to the trigger
+    langBtnRef.current?.focus();
   };
   // admin can override any interface string per language; empty falls back to the default
   const t = { ...T[lang], ...(data.i18n?.[lang] ?? {}) } as (typeof T)[Lang];
@@ -401,6 +463,9 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
   const aboutText = ru && data.aboutRu ? data.aboutRu : data.about;
   const email = data.email || 'contact@leet-cheats.xyz';
 
+  // only real web links become an <a>, so admin text can not add a script url
+  const safeUrl = (u: string) => /^(https?:|mailto:)/i.test(u.trim());
+
   // tiny markdown: **bold** *italic* [text](url)
   const renderAbout = (src: string) => src.split('\n').map((ln, i) => {
     const out: React.ReactNode[] = [];
@@ -412,7 +477,9 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
       if (m.index > 0) out.push(rest.slice(0, m.index));
       if (m[2]) out.push(<strong key={k++} style={{ color: 'var(--text)', fontWeight: 500 }}>{m[2]}</strong>);
       else if (m[4]) out.push(<em key={k++}>{m[4]}</em>);
-      else out.push(<a key={k++} href={m[7]} target="_blank" className="ulink">{m[6]}</a>);
+      // a bad scheme stays raw text, so the author can see it did not work
+      else if (safeUrl(m[7])) out.push(<a key={k++} href={m[7]} target="_blank" rel="noopener noreferrer" className="ulink">{m[6]}</a>);
+      else out.push(m[0]);
       rest = rest.slice(m.index + m[0].length);
     }
     return <div key={i} style={ln.trim() ? undefined : { height: '0.8em' }}>{out}</div>;
@@ -425,7 +492,7 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
   return (
     <div className="site-page" data-custom-cursor={dotOn ? 'true' : undefined} style={{ minHeight: '100vh', overflowX: 'clip', fontFamily: ru ? RU_FONT_STACK[data.fontRu || 'onest'] : undefined }}>
       {/* nav */}
-      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100, display: 'flex', justifyContent: 'center', padding: sc ? '12px 16px 0' : '0px', transition: 'padding .6s ' + EASE, pointerEvents: 'none' }}>
+      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100, display: 'flex', justifyContent: 'center', padding: sc ? '12px 16px 0' : '0px', transition: 'padding .45s ' + EASE, pointerEvents: 'none' }}>
         <div style={{
           pointerEvents: 'auto', position: 'relative', display: 'flex', alignItems: 'center', gap: 12, width: '100%',
           maxWidth: sc ? 790 : 1256, height: sc ? 52 : 64, padding: '0 20px',
@@ -433,30 +500,33 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
           borderRadius: sc ? 9999 : 0, background: sc ? 'var(--nav-bg)' : 'var(--nav-bg-top)',
           backdropFilter: navBlur, WebkitBackdropFilter: navBlur,
           boxShadow: 'none',
-          transition: `max-width .6s ${EASE}, height .6s ${EASE}, border-radius .6s ${EASE}, background .45s ease, border-color .45s ease, box-shadow .45s ease`
+          transition: `max-width .45s ${EASE}, height .45s ${EASE}, border-radius .45s ${EASE}, background .45s ease, border-color .45s ease, box-shadow .45s ease`
         }}>
-          <div onClick={goTop} style={{ fontSize: 16, letterSpacing: '-0.01em', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}>AimworkSpace</div>
+          <button type="button" className="bare" aria-label="back to top" onClick={goTop} style={{ fontSize: 16, letterSpacing: '-0.01em', whiteSpace: 'nowrap', userSelect: 'none' }}>AimworkSpace</button>
           <div className="nav-center" style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-50%)', display: 'flex', gap: 22, fontSize: 14 }}>
             <a href="#services" className="navlnk" style={rf('navS')}>{t.navS}</a>
             <a href="#projects" className="navlnk" style={rf('navP')}>{t.navP}</a>
             <a href="#contact" className="navlnk" style={rf('navC')}>{t.navC}</a>
           </div>
-          {/* language picker, 1:1 from binware.su */}
-          <div className="header_lang_item" ref={langRef} style={{ marginLeft: 'auto' }} onClick={() => setLangOpen(o => !o)}>
-            <div className="header_lang_main">
-              <img src={ru ? '/images/flags/russia.svg' : '/images/flags/usa.svg'} alt="" />
-              <span>{ru ? 'Russian' : 'English'}</span>
-            </div>
-            <div className={'header_lang_button' + (langOpen ? ' active' : '')}>
-              <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden>{CHEV}</svg>
-            </div>
-            <div className={'lang_dropdown' + (langOpen ? ' active' : '')}>
-              <div className={'lang_option' + (ru ? ' active' : '')} onClick={e => { e.stopPropagation(); setLang('ru'); }}>
+          {/* language picker, 1:1 from binware.su. the menu is a sibling of the
+              trigger, and inert while closed so tab skips the hidden options */}
+          <div className="header_lang_item" ref={langRef} style={{ marginLeft: 'auto' }}>
+            <button type="button" ref={langBtnRef} className="bare lang_trigger" aria-haspopup="menu" aria-expanded={langOpen} onClick={() => setLangOpen(o => !o)}>
+              <span className="header_lang_main">
+                <img src={ru ? '/images/flags/russia.svg' : '/images/flags/usa.svg'} alt="" />
+                <span>{ru ? 'Russian' : 'English'}</span>
+              </span>
+              <span className={'header_lang_button' + (langOpen ? ' active' : '')}>
+                <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden>{CHEV}</svg>
+              </span>
+            </button>
+            <div className={'lang_dropdown' + (langOpen ? ' active' : '')} role="menu" inert={!langOpen}>
+              <button type="button" role="menuitemradio" aria-checked={ru} className={'bare lang_option' + (ru ? ' active' : '')} onClick={() => setLang('ru')}>
                 <img src="/images/flags/russia.svg" alt="" /><span>Russian</span>
-              </div>
-              <div className={'lang_option' + (!ru ? ' active' : '')} onClick={e => { e.stopPropagation(); setLang('en'); }}>
+              </button>
+              <button type="button" role="menuitemradio" aria-checked={!ru} className={'bare lang_option' + (!ru ? ' active' : '')} onClick={() => setLang('en')}>
                 <img src="/images/flags/usa.svg" alt="" /><span>English</span>
-              </div>
+              </button>
             </div>
           </div>
         </div>
@@ -476,7 +546,7 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
           <h1 className="in0" style={{ margin: 0, fontSize: 'clamp(38px,5.2vw,60px)', fontWeight: 400, lineHeight: 1.05, letterSpacing: '-0.011em', maxWidth: '17ch', textWrap: 'balance', ...rf('heroT') }}>{headlineOn ? <HeadlineReveal text={t.heroT} /> : t.heroT}</h1>
           <div className="in1" style={{ marginTop: 14, fontSize: 18, lineHeight: 1.4, color: 'var(--muted)', maxWidth: '46ch', textWrap: 'balance', ...rf('heroSub') }}>{t.heroSub}</div>
           <div className="in2" style={{ display: 'flex', gap: 12, marginTop: 24 }}>
-            <a href={tgHref} target="_blank" className="pill" style={rf('start')}>{t.start} ↗</a>
+            <a href={tgHref} target="_blank" rel="noopener noreferrer" className="pill" style={rf('start')}>{t.start} ↗</a>
             <a href="#projects" className="ghost" style={rf('view')}>{t.view} ↓</a>
           </div>
         </div>
@@ -485,24 +555,49 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
             {/* hero art comes from the admin: ascii cat, dot hands or an uploaded picture.
                 avif is tiny but ios lockdown mode can not decode it - fall back to png on error */}
             {(() => {
-              const kind = data.heroArt === 'custom' && !data.heroArtCustom ? 'cat' : (data.heroArt || 'cat');
+              // an option with no file falls back to the built-in cat
+              const picked = data.heroArt || 'cat';
+              const kind = (picked === 'custom' && !data.heroArtCustom) || (picked === 'media' && !data.heroArtMedia)
+                ? 'cat' : picked;
               const art = kind === 'custom'
                 ? { src: data.heroArtCustom!, fb: data.heroArtCustom! }
-                : kind === 'hands'
-                  ? { src: '/assets/hero-hands.avif', fb: '/assets/hero-hands.png' }
-                  : kind === 'braille'
-                    ? { src: '/assets/kitokat-braille.avif', fb: '/assets/kitokat-braille.png' }
-                    : { src: '/assets/kitokat-ascii-fine.avif', fb: '/assets/kitokat-ascii-fine.png' };
+                : kind === 'media'
+                  ? { src: data.heroArtMedia!, fb: data.heroArtMedia! }
+                  : kind === 'hands'
+                    ? { src: '/assets/hero-hands.avif', fb: '/assets/hero-hands.png' }
+                    : kind === 'braille'
+                      ? { src: '/assets/kitokat-braille.avif', fb: '/assets/kitokat-braille.png' }
+                      : { src: '/assets/kitokat-ascii-fine.avif', fb: '/assets/kitokat-ascii-fine.png' };
+              // an upload has no known size, so it stays capped
+              const free = kind === 'custom' || kind === 'media';
               // admin scale on top of each art's base width; wider than the
               // viewport bleeds evenly to both sides (overflow is hidden)
               const sc = Math.max(40, Math.min(160, data.heroArtScale || 100)) / 100;
-              const w = (kind === 'hands' ? 114 : kind === 'custom' ? 86 : kind === 'braille' ? 32 : 80) * sc;
-              const style: React.CSSProperties = kind === 'custom'
+              const w = (kind === 'hands' ? 114 : free ? 86 : kind === 'braille' ? 32 : 80) * sc;
+              const style: React.CSSProperties = free
                 ? { maxWidth: Math.min(w, 100) + '%', maxHeight: Math.round(58 * sc) + 'vh', margin: '0 auto' }
                 : w > 100
                   ? { width: w + '%', marginLeft: (-(w - 100) / 2) + '%' }
                   : { width: w + '%', margin: '0 auto' };
-              return <img key={art.src} ref={handsRef} src={art.src} alt="" fetchPriority="high" onError={e => { const im = e.currentTarget; if (!im.dataset.fb && art.fb !== art.src) { im.dataset.fb = '1'; im.src = art.fb; } }} style={{ ...style, display: 'block', transform: 'scale(1.06)', willChange: reduced.current ? 'auto' : 'transform' }} />;
+              // a built-in art has a known ratio, so the height is held from the
+              // first paint and nothing jumps
+              const ratio = free ? undefined : ART_RATIO[kind] || ART_RATIO.cat;
+              // the art files are zoomed a touch to hide their edges. a plain
+              // photo or video must not be cropped, so it stays at 1
+              const zoom = kind === 'media' ? 1 : 1.06;
+              const box: React.CSSProperties = { ...style, aspectRatio: ratio, display: 'block', transform: `scale(${zoom})`, willChange: reduced.current ? 'auto' : 'transform' };
+              // parallax moves this element and reads the zoom back off it
+              const hold = (el: HTMLElement | null) => { handsRef.current = el; };
+              // a plain photo / gif / video keeps its own look. less motion
+              // gets the still frame instead of a playing file
+              if (kind === 'media') {
+                const still = !motionOk && data.heroArtMediaPoster ? data.heroArtMediaPoster : null;
+                if (!still && isVideoSrc(art.src)) {
+                  return <video key={art.src} ref={hold} data-zoom={zoom} src={art.src} muted playsInline preload="metadata" autoPlay={motionOk} loop={motionOk} style={box} />;
+                }
+                return <img key={still || art.src} ref={hold} data-zoom={zoom} src={still || art.src} alt="" fetchPriority="high" style={box} />;
+              }
+              return <img key={art.src} ref={hold} data-zoom={zoom} src={art.src} alt="" fetchPriority="high" onError={e => { const im = e.currentTarget; if (!im.dataset.fb && art.fb !== art.src) { im.dataset.fb = '1'; im.src = art.fb; } }} style={box} />;
             })()}
           </div>
         ) : (
@@ -573,11 +668,14 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
               // the wrapper owns the reveal, so hover lift and tilt on the card never fight it
               return (
                 <Reveal key={w.id} data-reveal={w.id} on={on} delay={revealAll ? 0 : revealed[w.id] ?? 0} soft={revealAll}>
-                <a data-card={w.id} className="card"
+                <div data-card={w.id} className="card"
                   onClick={() => openModal(w, ci)}
                   onMouseMove={config.spotlight || tiltOn ? cardMove : undefined}
                   onMouseLeave={config.spotlight || tiltOn ? cardLeave : undefined}
                   style={{ transformStyle: tiltOn ? 'preserve-3d' : undefined }}>
+                  {/* hit area for the keyboard: tab lands here, enter or space
+                      opens the modal, and the click bubbles to the card */}
+                  <button type="button" className="card-hit" aria-haspopup="dialog" aria-label={w.title} />
                   {config.spotlight && <span style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 2, background: 'radial-gradient(280px circle at var(--mx,-300px) var(--my,-300px),var(--spot),transparent 65%)' }} />}
                   {cur ? (
                     <span style={{ position: 'relative', display: 'block', aspectRatio: '16/10', borderBottom: '1px solid var(--line)', overflow: 'hidden' }}>
@@ -601,7 +699,7 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
                     {!!w.sub && <div style={{ marginTop: 6, fontSize: 13.5, lineHeight: 1.55, color: 'var(--muted)' }}>{w.sub}</div>}
                     {!!w.cat && <div style={{ marginTop: 6, fontSize: 12, letterSpacing: '.04em', color: 'var(--muted)' }}>{w.cat}</div>}
                   </div>
-                </a>
+                </div>
                 </Reveal>
               );
             })}
@@ -611,10 +709,10 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
           <div style={{ marginTop: 70, borderTop: '1px solid var(--line)', paddingTop: 44, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 30 }}>
             <span style={{ fontSize: 13, letterSpacing: '.12em', color: 'var(--muted)', textAlign: 'center', ...rf('feat') }}>{t.feat}</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: 60, flexWrap: 'wrap', justifyContent: 'center' }}>
-              <a href="https://leet-cheats.xyz" target="_blank" className="partner" style={{ display: 'block' }}>
+              <a href="https://leet-cheats.xyz" target="_blank" rel="noopener noreferrer" className="partner" style={{ display: 'block' }}>
                 <img src="/assets/leet-cheats.svg" alt="leet-cheats.xyz" style={{ height: 42, display: 'block' }} />
               </a>
-              <a href="https://binware.su" target="_blank" className="partner" style={{ display: 'flex', alignItems: 'center', gap: 12, textDecoration: 'none' }}>
+              <a href="https://binware.su" target="_blank" rel="noopener noreferrer" className="partner" style={{ display: 'flex', alignItems: 'center', gap: 12, textDecoration: 'none' }}>
                 <img src="/assets/binware.svg" alt="" style={{ width: 44, height: 44, display: 'block' }} />
                 <span style={{ fontSize: 21, fontWeight: 500, letterSpacing: '-0.01em' }}>binware.su</span>
               </a>
@@ -667,12 +765,15 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
             const open = faqOpen === q.id;
             return (
               <div key={q.id} style={{ borderTop: '1px solid var(--line)' }}>
-                <div className="faqrow" style={{ cursor: 'pointer' }} onClick={() => setFaqOpen(open ? null : q.id)}>
+                <button type="button" id={'faq-q-' + q.id} className="bare faqrow" aria-expanded={open} aria-controls={'faq-a-' + q.id} onClick={() => setFaqOpen(open ? null : q.id)}>
                   <span style={{ fontSize: 16, flex: 1 }}>{ru && q.qRu ? q.qRu : q.q}</span>
-                  <span style={{ fontSize: 13, color: 'var(--muted)', transform: open ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform .35s ' + EASE }}>▾</span>
-                </div>
-                <div style={{ display: 'grid', gridTemplateRows: open ? '1fr' : '0fr', transition: 'grid-template-rows .45s ' + EASE }}>
-                  <div style={{ overflow: 'hidden' }}>
+                  <span aria-hidden style={{ display: 'flex', color: 'var(--muted)', transform: open ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform .35s ' + EASE }}>{FAQ_CHEV}</span>
+                </button>
+                {/* the row keeps its grid animation, so the closed answer is
+                    still in the dom - inert keeps it out of tab order and out
+                    of what a screen reader reads, matching aria-expanded */}
+                <div id={'faq-a-' + q.id} role="group" aria-labelledby={'faq-q-' + q.id} style={{ display: 'grid', gridTemplateRows: open ? '1fr' : '0fr', transition: 'grid-template-rows .45s ' + EASE }}>
+                  <div style={{ overflow: 'hidden' }} inert={!open} aria-hidden={!open}>
                     <div style={{ padding: '0 4px 22px', fontSize: 14.5, lineHeight: 1.65, color: 'var(--muted)', maxWidth: '60ch' }}>{ru && q.aRu ? q.aRu : q.a}</div>
                   </div>
                 </div>
@@ -691,15 +792,15 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
             <h2 style={{ margin: 0, fontSize: 'clamp(30px,3.4vw,44px)', fontWeight: 400, lineHeight: 1.07, letterSpacing: '-0.007em', maxWidth: '22ch', textWrap: 'balance', ...rf('ctH') }}>{t.ctH}</h2>
             <div style={{ marginTop: 10, fontSize: 16, color: 'var(--muted)', ...rf('ctSub') }}>{t.ctSub}</div>
             <div style={{ display: 'flex', gap: 12, marginTop: 28 }}>
-              <a href={tgHref} target="_blank" className="pill">
-                <img src="https://cdn.simpleicons.org/telegram/000000" alt="" style={{ width: 15, height: 15, display: 'block' }} />Telegram
+              <a href={tgHref} target="_blank" rel="noopener noreferrer" className="pill">
+                <TelegramIcon size={15} color="#000000" />Telegram
               </a>
-              <a href={ghHref} target="_blank" className="ghost">
-                <img src="https://cdn.simpleicons.org/github/f3f3f3" alt="" style={{ width: 15, height: 15, display: 'block' }} />GitHub
+              <a href={ghHref} target="_blank" rel="noopener noreferrer" className="ghost">
+                <GithubIcon size={15} color="#f3f3f3" />GitHub
               </a>
             </div>
             <div style={{ marginTop: 22, fontSize: 14, color: 'var(--muted)', ...rf('dm') }}>
-              {t.dm} -&gt; <a href={tgHref} target="_blank" className="ulink">@{data.telegram}</a> · <span className="ulink" title="click to copy" style={{ textDecorationStyle: 'dotted', cursor: 'pointer' }} onClick={() => { navigator.clipboard?.writeText(email).catch(() => {}); showToast(t.copied); }}>{email}</span>
+              {t.dm} -&gt; <a href={tgHref} target="_blank" rel="noopener noreferrer" className="ulink">@{data.telegram}</a> · <button type="button" className="bare ulink" title="click to copy" style={{ textDecorationStyle: 'dotted' }} onClick={() => { navigator.clipboard?.writeText(email).catch(() => {}); showToast(t.copied); }}>{email}</button>
             </div>
           </div>
         </div>
@@ -710,8 +811,8 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
             <span style={{ fontSize: 14 }}>AimworkSpace</span>
             <span style={{ fontSize: 12, color: 'var(--faint)' }}>© 2026</span>
             <span style={{ marginLeft: 'auto', display: 'flex', gap: 18, fontSize: 13, alignItems: 'center' }}>
-              <a href={tgHref} target="_blank" className="ftr"><img src="https://cdn.simpleicons.org/telegram/9c9c9c" alt="" style={{ width: 12, height: 12 }} />telegram</a>
-              <a href={ghHref} target="_blank" className="ftr"><img src="https://cdn.simpleicons.org/github/9c9c9c" alt="" style={{ width: 12, height: 12 }} />github</a>
+              <a href={tgHref} target="_blank" rel="noopener noreferrer" className="ftr"><TelegramIcon size={12} color="#9c9c9c" />telegram</a>
+              <a href={ghHref} target="_blank" rel="noopener noreferrer" className="ftr"><GithubIcon size={12} color="#9c9c9c" />github</a>
               <a href={'mailto:' + email} className="ftr">email</a>
               {config.adminLink && <a href="/admin" className="ftr" style={{ color: 'var(--faint)' }}>admin</a>}
             </span>
@@ -726,7 +827,7 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
         return (
         <div onClick={closeModal} style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(0,0,0,.66)', backdropFilter: ovBlur, WebkitBackdropFilter: ovBlur, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, animation: closing ? 'zxfadeout .22s ease both' : rm ? 'none' : 'zxfade .3s ease both' }}>
           {/* exit mirrors the entry path: drops back down, shrinks and blurs away, faster than it came in */}
-          <div onClick={e => e.stopPropagation()} data-lenis-prevent style={{ width: 'min(660px,94vw)', maxHeight: '86vh', overflow: 'auto', background: 'var(--card)', border: '1px solid var(--line-2)', borderRadius: 14, animation: closing ? (rm ? 'zxfadeout .2s ease both' : `zxmodalout .24s ${EASE} both`) : rm ? 'none' : `zxmodal .45s ${EASE} both` }}>
+          <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="zx-modal-title" tabIndex={-1} onClick={e => e.stopPropagation()} data-lenis-prevent style={{ width: 'min(660px,94vw)', maxHeight: '86vh', overflow: 'auto', background: 'var(--card)', border: '1px solid var(--line-2)', borderRadius: 14, animation: closing ? (rm ? 'zxfadeout .2s ease both' : `zxmodalout .24s ${EASE} both`) : rm ? 'none' : `zxmodal .45s ${EASE} both` }}>
             {modal.media.length > 0 && (
               <div style={{ position: 'relative', borderBottom: '1px solid var(--line)' }}>
                 <MediaCarousel media={modal.media} mode="modal" motionOk={motionOk} onBroken={markBad} startIndex={Math.min(pic, modal.media.length - 1)} radius="13px 13px 0 0" />
@@ -734,7 +835,7 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
             )}
             <div style={{ padding: '26px 28px 28px' }}>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 14 }}>
-                <span style={{ fontSize: 24, letterSpacing: '-0.01em' }}>{modal.title}</span>
+                <span id="zx-modal-title" style={{ fontSize: 24, letterSpacing: '-0.01em' }}>{modal.title}</span>
                 <span style={{ marginLeft: 'auto', textAlign: 'right', whiteSpace: 'nowrap' }}>
                   <span style={{ fontSize: 14 }}><span style={{ color: 'var(--muted)', ...modal.metaFont }}>{modal.metaDim}</span><span>{modal.metaMain}</span></span>
                   {!!modal.metaSub && <span style={{ display: 'block', fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>{modal.metaSub}</span>}
@@ -757,8 +858,8 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
                 </div>
               )}
               <div style={{ display: 'flex', gap: 12, marginTop: 24 }}>
-                {!!modal.link && <a href={modal.link} target="_blank" className="pill" style={{ padding: '11px 22px', ...rf('open') }}>{t.open} ↗</a>}
-                <span className="ghost" style={{ padding: '11px 22px', cursor: 'pointer', userSelect: 'none', ...rf('close') }} onClick={closeModal}>{t.close}</span>
+                {!!modal.link && safeUrl(modal.link) && <a href={modal.link} target="_blank" rel="noopener noreferrer" className="pill" style={{ padding: '11px 22px', ...rf('open') }}>{t.open} ↗</a>}
+                <button type="button" ref={closeBtnRef} className="bare ghost" style={{ padding: '11px 22px', userSelect: 'none', ...rf('close') }} onClick={closeModal}>{t.close}</button>
               </div>
             </div>
           </div>
@@ -771,8 +872,9 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
         <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 400, backgroundImage: `url(${noise})`, backgroundRepeat: 'repeat', transform: 'translateZ(0)', ...(safari ? { opacity: .16 } : { opacity: .5, mixBlendMode: 'overlay' as const }) }} />
       )}
 
-      {/* toast: sits above the page-bottom gradual blur (~1100) so it stays crisp */}
-      <div style={{ position: 'fixed', left: 0, bottom: 34, width: '100%', display: 'flex', justifyContent: 'center', pointerEvents: 'none', zIndex: 2000 }}>
+      {/* toast: sits above the page-bottom gradual blur (~1100) so it stays crisp.
+          the live region is always in the dom, else the text is not announced */}
+      <div role="status" aria-live="polite" style={{ position: 'fixed', left: 0, bottom: 34, width: '100%', display: 'flex', justifyContent: 'center', pointerEvents: 'none', zIndex: 2000 }}>
         <span style={{ background: 'var(--inv-bg)', color: 'var(--inv-text)', borderRadius: 9999, padding: '9px 18px', fontSize: 13, opacity: toast ? 1 : 0, transform: toast ? 'translateY(0)' : 'translateY(14px)', transition: `opacity .35s ease, transform .4s ${EASE}`, ...rf('copied') }}>{toast || ' '}</span>
       </div>
 

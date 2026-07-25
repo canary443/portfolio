@@ -32,9 +32,10 @@ export type HeroBg = 'image' | 'gif' | 'pixel-blast' | 'dither' | 'threads' | 'l
 export type CursorStyle = 'dot' | 'pixel-trail' | 'target' | 'native';
 // cyrillic companion font for the russian locale (latin stays satoshi)
 export type RuFont = 'onest' | 'carlito' | 'jost';
-// hero picture when the background is 'image': ascii cat, dot hands,
-// braille cat or an upload (which is auto-rendered to ascii)
-export type HeroArt = 'cat' | 'hands' | 'braille' | 'custom';
+// hero picture when the background is 'image': ascii cat, dot hands, braille
+// cat, an upload rendered to ascii ('custom'), or a plain photo / gif / video
+// shown as it is ('media')
+export type HeroArt = 'cat' | 'hands' | 'braille' | 'custom' | 'media';
 // color presets for the hero background effects (pixel blast, dither, ...)
 export const HERO_PRESETS: { id: string; label: string; color: string }[] = [
   { id: 'mono', label: 'Mono', color: '#8f8f8f' },
@@ -64,6 +65,10 @@ export interface SiteData {
   // effects (flat fields so old saved data backfills from defaults)
   heroBg?: HeroBg; heroPreset?: string; cursorStyle?: CursorStyle;
   heroArt?: HeroArt; heroArtCustom?: string | null;
+  // photo / gif / video used as the hero art, kept as it is (no ascii pass).
+  // poster is a still frame for visitors who ask for less motion
+  heroArtMedia?: string | null;
+  heroArtMediaPoster?: string | null;
   // percent multiplier on the art's base width, 100 = as designed
   heroArtScale?: number;
   // gif / video behind the hero when heroBg is 'gif'. poster is a still frame
@@ -94,6 +99,8 @@ export const DEFAULTS: SiteData = {
   heroBg: 'image',
   heroArt: 'cat',
   heroArtCustom: null,
+  heroArtMedia: null,
+  heroArtMediaPoster: null,
   heroArtScale: 100,
   heroBgGif: null,
   heroBgGifPoster: null,

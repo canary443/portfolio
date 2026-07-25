@@ -71,6 +71,20 @@ a:hover { color: var(--text-strong); }
 /* target cursor: preflight is off, so borders need an explicit style to show */
 .target-cursor-corner { border-style: solid; }
 
+/* elements that are real buttons now but must look like plain text or rows.
+   this block sits above the site classes, so those still win on padding,
+   background and font size */
+.bare { appearance: none; -webkit-appearance: none; background: transparent; border: 0; margin: 0; padding: 0; color: inherit; font: inherit; letter-spacing: inherit; text-align: inherit; vertical-align: baseline; cursor: pointer; }
+/* firefox pads the inner box of a button, that would shift the text by 1px */
+.bare::-moz-focus-inner { border: 0; padding: 0; }
+/* keyboard ring only, a mouse click shows nothing */
+.bare:focus-visible { outline: 2px solid var(--muted); outline-offset: 2px; }
+/* invisible hit area over a project card: it takes tab focus, clicks pass
+   through it so swipe and the carousel arrows keep working */
+.card-hit { position: absolute; inset: 0; z-index: 4; appearance: none; background: transparent; border: 0; margin: 0; padding: 0; pointer-events: none; }
+/* the card clips its overflow, so the ring is drawn inside */
+.card-hit:focus-visible { outline: 2px solid var(--muted); outline-offset: -3px; border-radius: 6px; }
+
 /* hover states (inline styles cannot do :hover) */
 .navlnk { color: var(--muted); text-decoration: none; transition: color .15s ease; }
 .navlnk:hover { color: var(--text); }
@@ -85,7 +99,8 @@ a:hover { color: var(--text-strong); }
 .svc:hover { background: var(--hover); }
 /* the reveal wrapper is the grid item now, so the card fills it to keep rows even */
 .card { position: relative; cursor: pointer; text-decoration: none; color: var(--text); display: block; height: 100%; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--card); transition: border-color .2s ease, transform .34s var(--ease); }
-.card:hover { border-color: var(--faint); transform: translateY(-3px); }
+/* the card was a link before, so keep the brighter text on hover */
+.card:hover { border-color: var(--faint); color: var(--text-strong); transform: translateY(-3px); }
 .card:hover:active { transform: translateY(-3px) scale(.99); }
 .card:active { transform: scale(.99); }
 .card:hover .carr { opacity: 1 !important; }
@@ -95,7 +110,8 @@ a:hover { color: var(--text-strong); }
 .marr { position: absolute; top: 50%; transform: translateY(-50%); width: 34px; height: 34px; border-radius: 99px; background: rgba(10,10,10,.62); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); border: 1px solid rgba(255,255,255,.14); display: flex; align-items: center; justify-content: center; color: #f3f3f3; font-size: 15px; user-select: none; transition: background .15s ease, transform .15s ease; }
 .marr:hover { background: rgba(30,30,30,.85); }
 .marr:active { transform: translateY(-50%) scale(.88); }
-.faqrow { display: flex; align-items: center; gap: 16px; padding: 20px 4px; user-select: none; transition: background .2s ease; }
+/* width: the row is a button now, it has to stretch like the old div */
+.faqrow { display: flex; align-items: center; gap: 16px; padding: 20px 4px; width: 100%; user-select: none; transition: background .2s ease; }
 .faqrow:hover { background: var(--hover); }
 .partner { opacity: .8; transition: opacity .2s ease, transform .3s cubic-bezier(.22,1,.36,1); }
 .partner:hover { opacity: 1; transform: translateY(-2px); }
@@ -107,6 +123,9 @@ a:hover { color: var(--text-strong); }
 /* language picker, 1:1 from binware.su */
 /* flat dark frosted glass on the language switcher: no shine, no volume, no shadow */
 .header_lang_item { position: relative; width: 107px; height: 25px; display: flex; align-items: center; justify-content: space-between; padding: 0 2px; border-radius: 128px; background: rgba(20,20,22,.55); backdrop-filter: blur(14px) saturate(1.6); -webkit-backdrop-filter: blur(14px) saturate(1.6); border: 1px solid rgba(255,255,255,.09); cursor: pointer; user-select: none; }
+/* the trigger is a button inside the pill and fills it, so the flag, the label
+   and the chevron sit exactly where they did */
+.lang_trigger { flex: 1; height: 100%; display: flex; align-items: center; justify-content: space-between; }
 .header_lang_main { width: 79px; height: 23px; display: flex; align-items: center; justify-content: space-between; padding: 0 6px; border-radius: 128px; background: #1f1f1f; }
 .header_lang_main img { width: 17px; height: 17px; display: block; }
 .header_lang_main span { font-size: 12px; font-weight: 500; color: #f3f3f3; }
@@ -116,7 +135,7 @@ a:hover { color: var(--text-strong); }
 /* scales in from its trigger corner, not from center */
 .lang_dropdown { position: absolute; top: calc(100% + 2px); right: 0; width: 107px; padding: 4px; border-radius: 14px; background: #171717; box-shadow: 0 4px 12px rgba(0,0,0,.15); opacity: 0; transform: translateY(-5px) scale(.96); transform-origin: top right; pointer-events: none; transition: opacity .18s ease, transform .22s var(--ease); z-index: 30; }
 .lang_dropdown.active { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
-.lang_option { height: 23px; display: flex; align-items: center; gap: 6px; padding: 0 8px; border-radius: 12px; font-size: 11px; line-height: 1; color: rgba(255,255,255,.6); transition: background .15s ease, color .15s ease; }
+.lang_option { height: 23px; width: 100%; display: flex; align-items: center; gap: 6px; padding: 0 8px; border-radius: 12px; font-size: 11px; line-height: 1; color: rgba(255,255,255,.6); transition: background .15s ease, color .15s ease; }
 .lang_option:not(:last-child) { margin-bottom: 4px; }
 .lang_option img { width: 17px; height: 17px; display: block; }
 .lang_option:hover, .lang_option.active { background: #1f1f1f; color: #ffffff; }

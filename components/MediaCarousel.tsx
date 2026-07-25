@@ -36,6 +36,9 @@ const mediaStyle = (mode: 'card' | 'modal', radius?: string): React.CSSPropertie
     ? { width: '100%', height: '100%', objectFit: 'cover', display: 'block', background: '#000' }
     : { width: '100%', aspectRatio: '16/9', objectFit: 'cover', display: 'block', borderRadius: radius, background: '#000' };
 
+// button defaults off, so the .carr / .marr classes keep the old look
+const btnReset: React.CSSProperties = { padding: 0, margin: 0, font: 'inherit', appearance: 'none', WebkitAppearance: 'none', cursor: 'pointer' };
+
 export default function MediaCarousel({ media, mode, motionOk = true, startIndex = 0, onIndex, onBroken, radius }: MediaCarouselProps) {
   const [api, setApi] = useState<CarouselApi>();
   const [sel, setSel] = useState(startIndex);
@@ -108,8 +111,17 @@ export default function MediaCarousel({ media, mode, motionOk = true, startIndex
     return () => clearInterval(iv);
   }, [api, card, many, motionOk]);
 
-  // arrows live inside the card link: keep clicks away from the modal
+  // arrows live inside the card link: keep clicks away from the modal.
+  // a button fires click on enter and space too, so keys are covered as well
   const stop = (e: React.MouseEvent) => { e.stopPropagation(); e.preventDefault(); };
+
+  // css only shows the card arrows on hover, so a focused arrow is shown here
+  const [keyArrow, setKeyArrow] = useState<'prev' | 'next' | null>(null);
+  // old browsers can throw on this pseudo class, then just show the arrow
+  const byKey = (el: HTMLElement) => { try { return el.matches(':focus-visible'); } catch { return true; } };
+  const focusArrow = (which: 'prev' | 'next') => (e: React.FocusEvent<HTMLButtonElement>) => {
+    if (byKey(e.currentTarget)) setKeyArrow(which);
+  };
 
   return (
     <Carousel
@@ -138,16 +150,30 @@ export default function MediaCarousel({ media, mode, motionOk = true, startIndex
         ))}
       </CarouselContent>
       {many && <>
-        <span className={card ? 'carr' : 'marr'} role="button" aria-label="previous" style={{ left: card ? 8 : 10, zIndex: 3, cursor: 'pointer' }} onClick={e => { stop(e); api?.scrollPrev(); }}><Chev dir="l" /></span>
-        <span className={card ? 'carr' : 'marr'} role="button" aria-label="next" style={{ right: card ? 8 : 10, zIndex: 3, cursor: 'pointer' }} onClick={e => { stop(e); api?.scrollNext(); }}><Chev dir="r" /></span>
-        <span style={{ position: 'absolute', left: 0, right: 0, bottom: card ? 8 : 10, display: 'flex', justifyContent: 'center', gap: card ? 5 : 6, zIndex: 3 }}>
-          {media.map((_, i) => (
-            <span
-              key={i}
-              onClick={!card ? e => { stop(e); api?.scrollTo(i); } : undefined}
-              style={{ width: card ? 6 : 7, height: card ? 6 : 7, borderRadius: 99, cursor: card ? undefined : 'pointer', background: i === sel ? '#f3f3f3' : 'rgba(255,255,255,.35)', transform: i === sel ? 'scale(1.25)' : 'scale(1)', transition: 'background .25s ease, transform .25s var(--ease)' }}
-            />
-          ))}
+        <button
+          type="button" className={card ? 'carr' : 'marr'} aria-label="previous"
+          style={{ ...btnReset, left: card ? 8 : 10, zIndex: 3, opacity: card && keyArrow === 'prev' ? 1 : undefined }}
+          onFocus={focusArrow('prev')} onBlur={() => setKeyArrow(null)}
+          onClick={e => { stop(e); api?.scrollPrev(); }}
+        ><Chev dir="l" /></button>
+        <button
+          type="button" className={card ? 'carr' : 'marr'} aria-label="next"
+          style={{ ...btnReset, right: card ? 8 : 10, zIndex: 3, opacity: card && keyArrow === 'next' ? 1 : undefined }}
+          onFocus={focusArrow('next')} onBlur={() => setKeyArrow(null)}
+          onClick={e => { stop(e); api?.scrollNext(); }}
+        ><Chev dir="r" /></button>
+        {/* card dots only show the state, the modal dots jump to a slide */}
+        <span aria-hidden={card || undefined} style={{ position: 'absolute', left: 0, right: 0, bottom: card ? 8 : 10, display: 'flex', justifyContent: 'center', gap: card ? 5 : 6, zIndex: 3 }}>
+          {media.map((_, i) => {
+            const dot: React.CSSProperties = { width: card ? 6 : 7, height: card ? 6 : 7, borderRadius: 99, background: i === sel ? '#f3f3f3' : 'rgba(255,255,255,.35)', transform: i === sel ? 'scale(1.25)' : 'scale(1)', transition: 'background .25s ease, transform .25s var(--ease)' };
+            return card ? <span key={i} style={dot} /> : (
+              <button
+                key={i} type="button" aria-label={`go to slide ${i + 1}`}
+                style={{ ...btnReset, ...dot, border: 0 }}
+                onClick={e => { stop(e); api?.scrollTo(i); }}
+              />
+            );
+          })}
         </span>
       </>}
     </Carousel>
