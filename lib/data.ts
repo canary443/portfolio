@@ -28,7 +28,7 @@ export interface FaqItem {
 }
 // visual effects, all admin editable. webgl ones need three/ogl and only run
 // on capable devices, so 'image' hero and 'dot' cursor stay the safe fallback.
-export type HeroBg = 'image' | 'pixel-blast' | 'dither' | 'threads' | 'liquid-chrome';
+export type HeroBg = 'image' | 'gif' | 'pixel-blast' | 'dither' | 'threads' | 'liquid-chrome';
 export type CursorStyle = 'dot' | 'pixel-trail' | 'target' | 'native';
 // cyrillic companion font for the russian locale (latin stays satoshi)
 export type RuFont = 'onest' | 'carlito' | 'jost';
@@ -66,6 +66,11 @@ export interface SiteData {
   heroArt?: HeroArt; heroArtCustom?: string | null;
   // percent multiplier on the art's base width, 100 = as designed
   heroArtScale?: number;
+  // gif / video behind the hero when heroBg is 'gif'. poster is a still frame
+  // shown to people who ask for less motion. opacity in percent
+  heroBgGif?: string | null;
+  heroBgGifPoster?: string | null;
+  heroBgGifOpacity?: number;
   fxGradualBlur?: boolean; fxHeadlineReveal?: boolean;
   fxCardTilt?: boolean;
   fontRu?: RuFont;
@@ -90,6 +95,9 @@ export const DEFAULTS: SiteData = {
   heroArt: 'cat',
   heroArtCustom: null,
   heroArtScale: 100,
+  heroBgGif: null,
+  heroBgGifPoster: null,
+  heroBgGifOpacity: 100,
   heroPreset: 'mono',
   cursorStyle: 'dot',
   fxGradualBlur: true,

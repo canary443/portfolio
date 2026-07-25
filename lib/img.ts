@@ -66,26 +66,50 @@ export async function shrinkImage(
 // rough byte size of a data url
 export const dataUrlKb = (s: string) => Math.round(s.length * 0.75 / 1024);
 
-// map a data url mime to a file extension
-const EXT_BY_MIME: Record<string, string> = {
-  'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp',
-  'image/svg+xml': 'svg', 'image/gif': 'gif',
-  'video/mp4': 'mp4', 'video/webm': 'webm'
-};
+// read a file as is, for media a canvas would break (video, gif)
+export const fileToDataUrl = readAsDataUrl;
+
+// still first frame of a gif, used when the visitor asks for less motion
+export async function firstFrame(file: File): Promise<string | null> {
+  try {
+    const im = await load(file);
+    return encode(im, 1600, 'image/jpeg', .82);
+  } catch {
+    return null;
+  }
+}
+
+// true when a src needs a <video> tag instead of <img>
+export const isVideoSrc = (s: string) =>
+  /^data:video\//i.test(s) || /\.(mp4|webm|mov)(\?|#|$)/i.test(s);
+
+// post to the upload api. the server picks the extension from the mime
+async function post(body: Record<string, string>): Promise<{ url: string; err: string }> {
+  try {
+    const r = await fetch('/api/upload', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const j = await r.json().catch(() => ({}));
+    if (j && j.ok && typeof j.url === 'string' && j.url) return { url: j.url, err: '' };
+    return { url: '', err: (j && j.err) || 'http ' + r.status };
+  } catch {
+    return { url: '', err: 'network error' };
+  }
+}
 
 // send a data url to storage and get a public url back. on any failure keep
 // the data url, so an add/save never breaks and old inline media still works.
 export async function uploadMedia(dataUrl: string): Promise<string> {
   if (!dataUrl || !dataUrl.startsWith('data:')) return dataUrl; // already a url
-  const mime = /^data:([^;,]+)/.exec(dataUrl)?.[1] || '';
-  try {
-    const r = await fetch('/api/upload', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ dataUrl, ext: EXT_BY_MIME[mime] || '' })
-    });
-    const j = await r.json().catch(() => ({}));
-    if (j && j.ok && typeof j.url === 'string' && j.url) return j.url;
-  } catch {}
-  return dataUrl;
+  const r = await post({ dataUrl });
+  return r.url || dataUrl;
 }
+
+// copy someone else's link into our storage. pasted cdn links expire, ours
+// do not, so this is how a link stops being a black box later
+export const importUrl = (url: string) => post({ url });
+
+// true when a link already points at our own storage
+export const inStorage = (url: string) => url.includes('/storage/v1/object/public/');
