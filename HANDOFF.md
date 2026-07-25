@@ -1,13 +1,21 @@
 # HANDOFF.md
 
-How to move this site from localStorage content to a real backend, when that day comes. The current app is the source of truth for design and behavior; this file maps it to the production data stack.
+Where the content lives today, and how to move it to a real database when that day comes. The current app is the source of truth for design and behavior; this file maps it to the production data stack.
 
-## Stack
-- **Next.js (App Router) on Vercel** — already in place; add SSG/ISR for the public page and API routes for admin actions.
-- **Supabase** — Postgres + Storage (images), anon key with RLS for the public read path.
-- Fonts and icons stay as they are (Satoshi from Fontshare, Onest from Google, simpleicons CDN) or get inlined at build.
+## Starting point (what is already built)
+The old version of this file assumed the content still sat in localStorage. That has not been true for a while. As of 2026-07-25:
 
-## Database schema (mirrors `lib/data.ts`)
+- **Content** — one `site.json` in a private Vercel Blob store. Read server-side by `readContent()` in `lib/content.ts` and passed into the page, so the first paint already has real content. Written whole by `PUT /api/content`: admin cookie, 4mb body cap, shape check before the write. `lib/data.ts` holds the types and `DEFAULTS` plus the client side of the same route (`loadRemote` / `saveRemote`).
+- **Media** — Supabase Storage, bucket `media`, files at `uploads/<uuid>.<ext>`, served as public urls. Everything goes through `POST /api/upload` (admin cookie, 25mb cap, mime allowlist, extension taken from the mime). It accepts a data url from the browser *or* a foreign link, which it fetches and copies into our own bucket so a signed cdn link cannot expire under us. Client helpers: `uploadMedia`, `importUrl`, `inStorage`, `fileToDataUrl`, `firstFrame`, `isVideoSrc` in `lib/img.ts`. The live content json holds only urls - no base64 left.
+- **Postgres** — the only table the app knows about in the same Supabase project is `keepalive`, poked daily by a Vercel cron (`vercel.json` → `/api/keepalive`) so a free project is not paused for inactivity. No content tables exist.
+- **Admin** — `POST/GET/DELETE /api/admin/session` (env passphrase, signed httpOnly cookie, per-IP rate limit). localStorage (`zx_data_v2`) survives only as the admin's own cache; the public page does not read it any more.
+
+So the remaining move is not "localStorage → backend". It is "one json blob → rows", and only when the blob stops being enough.
+
+## When the move is worth doing
+The json is ~12kb, one read per request, one write per save. Reasons to switch: two people editing at once (the whole-object PUT is last-write-wins and silently overwrites), per-item history or drafts, or a list growing big enough that sending all of it on every request costs something. None of those are true today.
+
+## Database schema (sketch, mirrors `lib/data.ts`)
 ```sql
 create table settings (
   id int primary key default 1,
@@ -36,85 +44,94 @@ create table faq (
 );
 ```
 `sort` columns replace array order (the admin drag-reorder writes new sort values).
+Two gaps to close before using this as written: the sketch predates several fields the model now has
+(`works.imgs[]` + `works.video` are covered, but `changelog` on works and team projects is not, and
+neither are the hero / effect / font settings and the per-string i18n overrides). Simplest split:
+one `settings` row with a `jsonb` column for everything that is site-wide, and a `jsonb changelog`
+column per item. All image and video columns hold Supabase Storage urls already, so nothing binary
+ever goes into Postgres.
 
 ## API surface (admin routes, all behind the existing session cookie + rate limit)
-- `POST/GET/DELETE /api/admin/session` — already implemented (env passphrase, httpOnly cookie).
+- `POST/GET/DELETE /api/admin/session` — **built** (env passphrase, httpOnly cookie).
+- `POST /api/upload` — **built**: data url or foreign link → Supabase Storage, returns the public url, size/type checked server-side.
+- `GET/PUT /api/content` — **built**, but whole-object: it is what the per-entity routes below would replace.
 - `PUT /api/settings`, `PUT /api/about`
 - `POST/PUT/DELETE /api/{services|works|team-projects|faq}`
 - `POST /api/{services|works|faq}/reorder` — array of ids in new order
-- `POST /api/upload` — image → Supabase Storage, returns public URL (validate size/type server-side)
 
 ## Migration path
-Replace `loadData`/`saveData` in `lib/data.ts` with API calls (public read can stay client-side or move to server components). Everything else — components, i18n, motion — stays untouched.
+Swap the three functions that touch the blob - `readContent` in `lib/content.ts` (server read) and
+`loadRemote` / `saveRemote` in `lib/data.ts` (admin read/write) - for calls to the routes above. The
+public page already reads on the server, so it keeps doing that. Media needs no migration at all: it
+is in Supabase Storage already and the rows would only hold the same urls. Everything else -
+components, i18n, motion - stays untouched.
 
 ## Behavior to preserve
-- EN/RU toggle: all `*Ru` fields fall back to EN when empty; locale persisted client-side.
+- EN/RU toggle: all `*Ru` fields fall back to EN when empty; the pick is persisted in the `zx_lang` cookie so the server can read it.
 - RU price shows bare value (`$450`), EN shows `made for $450`.
 - Cards without an image show the striped "NO PIC" placeholder.
 - FAQ order = admin drag order.
-- About text formatting: `**bold**`, `*italic*`, `[text](url)`, blank line = spacer (tiny parser in `app/page.tsx`).
+- About text formatting: `**bold**`, `*italic*`, `[text](url)`, blank line = spacer (tiny parser in `app/site.tsx`). A link renders as a link only for `http:`, `https:` and `mailto:` — keep that allowlist.
+- Language pick: the `zx_lang` cookie wins, otherwise the server reads `Accept-Language` (`lib/lang.ts`), so `<html lang>` and the text always agree.
 - All motion specifics are documented in DESIGN.md — keep the easings and the curtain/pin scroll exactly.
 
 ## Nice-to-have after launch
-- OG image + meta per locale; sitemap; analytics (Plausible or Vercel Analytics); uptime ping for the admin.
+- Done: og image + description, `sitemap.xml` / `robots.txt`, `@vercel/analytics`.
+- Still missing: any uptime ping for the site itself (the daily cron only keeps Supabase awake), and per-locale meta (one url serves both languages, see the backlog).
 
 ## Site audit (2026-07-25) - improvement backlog
 
-Full review of `app/site.tsx`, `app/globals.css`, `lib/data.ts`, `lib/i18n.ts`, `app/layout.tsx`,
-`components/MediaCarousel.tsx`. Motion and visual craft are already solid (reduced-motion handled
+The audit covered `app/site.tsx`, `app/globals.css`, `lib/data.ts`, `lib/i18n.ts`, `app/layout.tsx`,
+`components/MediaCarousel.tsx`. Motion and visual craft were already solid (reduced-motion handled
 everywhere, Safari branches, stagger, `:active` press states, exit faster than entry, SSR content
-with no flash). The real leverage is in the five areas below.
+with no flash), and most of the rest was fixed the same day. Below is the state *after* those fixes,
+re-checked against the code and against the live site on 2026-07-25.
 
-### 1. Content (highest leverage, not code)
-Default work cards still show "NO PIC" placeholders and an unnamed team project with no links.
-No real screenshots/video or client quotes will outweigh any code change below. Add real media per
-work item, and consider a short client-quote field per card or in the modal.
+### Done on 2026-07-25
 
-### 2. Accessibility - keyboard nav is largely broken
-Most interactive elements are `div`/`span` with `onClick`, unreachable by keyboard/screen reader:
+| Was | Now |
+| --- | --- |
+| FAQ rows were `div onClick` | real `<button>` with `aria-expanded` / `aria-controls`; the closed answer is `inert` + `aria-hidden` and its panel is `role="group"` |
+| Project cards were an `<a>` with no `href` | a `.card-hit` `<button aria-haspopup="dialog">` inside the card, so a card without a link is still focusable |
+| Language switcher was `div onClick` | `<button aria-haspopup="menu" aria-expanded>`; the menu is `role="menu"` and `inert` while closed, Escape closes it and hands focus back to the trigger |
+| Modal had no dialog semantics | `role="dialog"` + `aria-modal` + `aria-labelledby`, focus jumps to Close on open, Tab is trapped inside, focus returns to the card that opened it |
+| Modal close and the email-copy chip were `span onClick` | real buttons, styling stripped by the `.bare` reset in `globals.css` |
+| Carousel arrows were `role="button"` with no key handling | real `<button aria-label>` elements, and the modal dots too |
+| Toast was invisible to screen readers | an always-mounted `role="status" aria-live="polite"` region |
+| Icons came from `cdn.simpleicons.org` | inline SVG in `components/BrandIcons.tsx` (Simple Icons paths, CC0). No runtime CDN left anywhere |
+| Fonts came from Fontshare + Google Fonts | self-hosted: `app/fonts.css` + `public/fonts`, 12 woff2 / 217kb total, `unicode-range` split so a Cyrillic face is fetched only when it is actually used, and only the two first-paint Satoshi faces are preloaded |
+| No `robots.txt` / `sitemap.xml` | `app/robots.ts` (disallow `/admin`, `/api`) and `app/sitemap.ts`, both live |
+| No JSON-LD | a static `ProfessionalService` block in `app/layout.tsx` with the service catalog and price range |
+| OG description was "@aimwork portfolio" | "Sites, Telegram bots and automation. Built in 3-14 days, reply in under 24h." on both og and twitter, with the square cat image |
+| No analytics | `@vercel/analytics` mounted in the layout |
+| Media was base64 inside `site.json` (~3.8mb, per the note in `lib/content.ts`) | moved. The live json is ~12kb with 31 Supabase storage files and zero `data:` urls (checked over `GET /api/content`). The admin keeps the "Move N files to storage" button in Settings for anything inline that shows up later |
+| Hero art caused a layout shift | the built-in arts carry a known ratio, so `aspect-ratio` holds the box from the first paint |
+| Default demo content on the cards | real work: 8 cards with real screenshots and one video, and two real team projects (Leet Cheats, Binware) with links and pictures. The "unnamed startup" placeholder now only lives in `DEFAULTS`, as the demo content for an empty store |
+| Nav pill morph was `.6s` | `.45s`, matching the rest of the nav transitions |
+| FAQ chevron was the text glyph `▾` | an inline SVG, so it renders the same in every font |
 
-| Location | Problem | Fix |
-| --- | --- | --- |
-| FAQ rows, `app/site.tsx:655` | `div onClick`, not focusable | `<button>` + `aria-expanded` |
-| Project cards, `app/site.tsx:561` | `<a>` with no `href` when `link` is empty - never focusable | render as `<button>`, or keep `href` and guard the click handler |
-| Language switcher, `app/site.tsx:436` | `div onClick`, no `aria-expanded`, no Escape handling | convert to `<button>` + keydown handler |
-| Modal, `app/site.tsx:712` | no `role="dialog"`, `aria-modal`, focus trap, or focus return on close (Escape-to-close already works) | add the missing ARIA + focus management |
-| Modal close / email-copy, `app/site.tsx:746` and `:687` | `span onClick` | `<button>` |
-| Carousel arrows, `components/MediaCarousel.tsx:101` | `role="button"` but no `tabIndex`/Enter handling | use real `<button>` elements |
-| Toast, `app/site.tsx:761` | screen readers never announce "copied" | add `aria-live="polite"` |
+### Still open - content
+- **No client quotes.** There is no field for one on `Work` or `TeamProject` and nowhere in the
+  modal to show it. This is still the highest-leverage change on the page, and it is not code.
+- **5 of the 8 work cards have `-` as the price.** That renders as "made for -" in EN and a bare
+  "-" in RU. Either fill in the number or give the model a real "on request" state instead of a dash.
 
-Roughly an evening of work; would also clear the Lighthouse Accessibility score.
-
-### 3. External CDN dependency (relevant for the RU audience)
-- Every stack/social icon, including the icon inside the primary CTA button, loads from
-  `cdn.simpleicons.org` at runtime. Third-party CDNs are frequently slow or blocked from Russia -
-  inline the SVGs or serve them from `public/`.
-- Fonts: two blocking stylesheet requests (Fontshare + Google Fonts) in `app/layout.tsx:38-40`, and
-  **all three** Cyrillic font families (Onest/Carlito/Jost) load even though only one (`fontRu`) is
-  ever active. Google Fonts is also unreliable from Russia. Self-host via `next/font/local` to drop
-  both the render-blocking request and the CDN dependency.
-
-### 4. SEO - cheap wins currently missing
-- No `robots.txt` / `sitemap.xml` (trivial to add as files under `app/`).
-- No JSON-LD (`Person`/`ProfessionalService` with services + price range).
-- No `hreflang` alternates between the `en`/`ru` versions.
-- OG description in `app/layout.tsx:12` ("@aimwork portfolio") undersells the pitch - Telegram
-  sharing is a primary channel for this site. Something like "Sites, bots and automation. 3-14
-  days, reply within 24h" converts better on a link preview card.
-
-### 5. Performance / infra
-- No analytics at all - can't see scroll depth or CTA click-through. `@vercel/analytics` is a
-  one-line add to `app/layout.tsx`.
-- `app/page.tsx:8` is `force-dynamic`, so every visit round-trips to Blob storage. Switch to ISR
-  (`revalidate`) or call `revalidateTag` from the `/api/content` PUT handler to cut TTFB.
-- Hero art has no reserved aspect ratio, so it causes a layout shift while it loads - give the
-  container a fixed `aspect-ratio`. The ascii-cat PNG fallback is 644KB; the AVIF (284KB) is fine.
-- Media is still base64-inlined inside `site.json` (known 4MB PUT limit, see the media note in
-  CLAUDE.md) - continue the move to `aimworkspace-media` Supabase storage already started.
-
-### Minor motion polish (optional, taste call)
-- Nav pill morph is `.6s` (`app/site.tsx:427`); canonical UI timing is 300-450ms. Current value
-  reads as an intentional "cinematic" morph - fine to leave, but `.45s` would feel tighter if it
-  ever feels slow in review.
-- FAQ chevron (`▾`) is a text glyph and renders inconsistently across fonts; an inline SVG arrow
-  would be more stable.
+### Still open - infra
+- **No cache on the content read.** `app/page.tsx` is `force-dynamic` and `readContent()` runs
+  uncached, so every visit round-trips to Blob storage. The reason for that (the Next data cache
+  refuses anything over 2mb and `site.json` was ~3.8mb) is gone now that the media has moved, so
+  `unstable_cache` with a tag that the `/api/content` PUT clears is unblocked - the comment at the
+  top of `lib/content.ts` still describes the old situation.
+- **The CSP is report-only and reports nowhere.** Flipping it to enforcing needs a nonce for the two
+  inline scripts in `app/layout.tsx`. Full detail in SECURITY.md, checklist item 7.
+- **Uploads are never deleted.** `/api/upload` only ever writes; replacing a card's picture leaves
+  the old file in the `media` bucket forever. Nothing breaks, but the bucket grows in one direction.
+- **A custom hero art still has no reserved ratio.** `heroArt: 'custom'` / `'media'` is an admin
+  upload of unknown size, so `aspect-ratio` is left undefined and the hero can shift while it loads.
+  Storing the uploaded file's width/height alongside the url would close it. (The live site uses
+  `media` today, so this one is real, not theoretical.)
+- **No `hreflang`, on purpose.** Both languages live on the same url and the switch is client-side,
+  so there is no second url to point at. If the RU version ever needs to rank on its own it has to
+  become a real route (`/ru`) first - that is the whole task, not a meta tag.
+- The ascii-cat PNG fallback is 642kb, but it only loads when the browser cannot decode the AVIF
+  (283kb) - iOS lockdown mode, basically. Not worth optimising unless that path gets common.
