@@ -632,7 +632,9 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
                   : Icon
                     ? <span style={{ display: 'inline-flex', color: 'var(--icon)' }}><Icon size={26} aria-hidden /></span>
                     : <div style={{ fontSize: 22, lineHeight: 1.2, color: 'var(--icon)' }}>{s.glyph}</div>}
-                <div style={{ marginTop: 20, fontSize: 14, letterSpacing: '.12em', textTransform: 'uppercase' }}>{s.title}</div>
+                {/* case comes from the admin, not from css: type "Сайты" and it
+                    stays that way. tracking is softer than caps would need */}
+                <div style={{ marginTop: 20, fontSize: 14, letterSpacing: '.06em' }}>{s.title}</div>
                 <div style={{ marginTop: 10, fontSize: 14, lineHeight: 1.6, color: 'var(--muted)', maxWidth: '36ch' }}>{s.desc}</div>
               </div>
               );
@@ -672,13 +674,13 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
                   onClick={() => openModal(w, ci)}
                   onMouseMove={config.spotlight || tiltOn ? cardMove : undefined}
                   onMouseLeave={config.spotlight || tiltOn ? cardLeave : undefined}
-                  style={{ transformStyle: tiltOn ? 'preserve-3d' : undefined }}>
+                  style={{ display: 'flex', flexDirection: 'column', transformStyle: tiltOn ? 'preserve-3d' : undefined }}>
                   {/* hit area for the keyboard: tab lands here, enter or space
                       opens the modal, and the click bubbles to the card */}
                   <button type="button" className="card-hit" aria-haspopup="dialog" aria-label={w.title} />
                   {config.spotlight && <span style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 2, background: 'radial-gradient(280px circle at var(--mx,-300px) var(--my,-300px),var(--spot),transparent 65%)' }} />}
                   {cur ? (
-                    <span style={{ position: 'relative', display: 'block', aspectRatio: '16/10', borderBottom: '1px solid var(--line)', overflow: 'hidden' }}>
+                    <span style={{ position: 'relative', display: 'block', flexShrink: 0, aspectRatio: '16/10', borderBottom: '1px solid var(--line)', overflow: 'hidden' }}>
                       {/* shadcn/embla carousel: crossfade slides, swipe on touch */}
                       <MediaCarousel media={w.media} mode="card" motionOk={motionOk} onBroken={markBad} onIndex={i => setCardPic(c => (c[w.id] === i ? c : { ...c, [w.id]: i }))} />
                     </span>
@@ -687,7 +689,9 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
                       <span style={{ fontSize: 12, letterSpacing: '.14em', color: 'var(--faint)', ...w.placeFont }}>{w.place}</span>
                     </div>
                   )}
-                  <div style={{ padding: '16px 18px 18px' }}>
+                  {/* fills the rest of the card, so the date can sit at the
+                      bottom edge and line up across a row of cards */}
+                  <div style={{ padding: '16px 18px 18px', flex: 1, display: 'flex', flexDirection: 'column' }}>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
                       <span style={{ fontSize: 17, letterSpacing: '-0.005em', minWidth: 0 }}>{w.title}</span>
                       {!!w.link && <span style={{ fontSize: 12, color: 'var(--muted)' }}>↗</span>}
@@ -697,7 +701,7 @@ export default function Site({ initial, initialLang = 'en' }: { initial: SiteDat
                       </span>
                     </div>
                     {!!w.sub && <div style={{ marginTop: 6, fontSize: 13.5, lineHeight: 1.55, color: 'var(--muted)' }}>{w.sub}</div>}
-                    {!!w.cat && <div style={{ marginTop: 6, fontSize: 12, letterSpacing: '.04em', color: 'var(--muted)' }}>{w.cat}</div>}
+                    {!!w.cat && <div style={{ marginTop: 'auto', paddingTop: 8, fontSize: 12, letterSpacing: '.04em', color: 'var(--muted)' }}>{w.cat}</div>}
                   </div>
                 </div>
                 </Reveal>
