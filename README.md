@@ -50,7 +50,12 @@ what the site serves crawlers:
 
 both languages share one url, so there is no hreflang on purpose - `og:locale` is `en_US` with `ru_RU` as the alternate.
 
-registering the site is a one-time manual job: add the property in [search console](https://search.google.com/search-console) and [yandex webmaster](https://webmaster.yandex.ru/), pick the html-tag method, put the code in the vercel env var, redeploy, then hit verify and submit `https://aimwork.space/sitemap.xml` in both.
+registering the site was a one-time manual job, and the two engines are set up differently:
+
+- **google search console** - verified as a *domain* property over dns, not with a meta tag. the record lives in the vercel dns zone (`vercel dns ls aimwork.space`): a TXT on the apex holding `google-site-verification=...`. a domain property covers every subdomain and both protocols, and it needs no deploy to keep working. `GOOGLE_SITE_VERIFICATION` is wired in `app/layout.tsx` anyway, unset and unused - it is there in case a url-prefix property is ever added on top
+- **yandex webmaster** - verified with the meta tag. the code is `YANDEX_VERIFICATION` in the vercel env vars (all three environments) and in `.env.local`. it is a public value, not a secret. changing it needs a redeploy to show up
+
+after verifying, submit `https://aimwork.space/sitemap.xml` in both consoles.
 
 ## notes
 
