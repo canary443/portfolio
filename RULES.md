@@ -1,6 +1,6 @@
 # RULES.md
 
-Mandatory rules for anyone (human or AI agent) working in this repo. These rules apply to **commits and code**. They do NOT apply to the documentation files (README.md, DESIGN.md, HANDOFF.md, STRUCTURE.md, SECURITY.md, CLAUDE.md) — docs may be detailed and use normal English.
+Mandatory rules for AI agents working in this repo. These rules apply to **commits and code**. They do NOT apply to the documentation files (README.md, DESIGN.md, HANDOFF.md, STRUCTURE.md, SECURITY.md, CLAUDE.md) — docs may be detailed and use normal English.
 
 ## Git
 1. Commit messages in simple English (A1 level). Short, present tense, lowercase start is fine.
