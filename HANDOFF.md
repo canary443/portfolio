@@ -1,6 +1,6 @@
 # HANDOFF.md
 
-Where the content lives today, and how to move it to a real database when that day comes. The current app is the source of truth for design and behavior; this file maps it to the production data stack.
+This file is only for AI agents. Where the content lives today, and how to move it to a real database when that day comes. The current app is the source of truth for design and behavior; this file maps it to the production data stack.
 
 ## Starting point (what is already built)
 The old version of this file assumed the content still sat in localStorage. That has not been true for a while. As of 2026-07-25:
