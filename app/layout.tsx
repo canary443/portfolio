@@ -1,19 +1,19 @@
 import type { Metadata, Viewport } from 'next';
-import { cookies, headers } from 'next/headers';
+import { cookies } from 'next/headers';
 import { pickLang } from '@/lib/lang';
 import { Analytics } from '@vercel/analytics/next';
 import './globals.css';
 import './fonts.css';
 
-// short pitch for link previews and search. english only: this is static
+// short line for link previews and search. english only: this is static
 // server metadata, it can not follow the ru toggle
-const PREVIEW = 'Sites, Telegram bots and automation. Built in 3-14 days, reply in under 24h.';
+const PREVIEW = 'Full stack developer. Sites, Telegram bots and automation.';
 
 export const metadata: Metadata = {
   // link previews (telegram, twitter, discord) show the square cat
   metadataBase: new URL('https://aimwork.space'),
   title: 'AimworkSpace',
-  description: 'Full stack dev: sites, Telegram bots and automation. Built in 3-14 days, reply in under 24h. Fixed price per project.',
+  description: 'Personal page of a full stack developer: sites, Telegram bots and automation. Selected work and links.',
   // one page, one address. the admin preview opens /?preview=1 and this keeps
   // that from counting as a second page
   alternates: { canonical: '/' },
@@ -48,36 +48,20 @@ export const metadata: Metadata = {
   }
 };
 
-// what the studio sells, for search engines. static on purpose: never build
+// who the page is about, for search engines. static on purpose: never build
 // this from saved content, the layout must stay cheap and cacheable
 const SCHEMA = {
   '@context': 'https://schema.org',
-  '@type': 'ProfessionalService',
-  name: 'AimworkSpace',
-  alternateName: 'aimwork',
+  '@type': 'Person',
+  name: 'aimwork',
+  alternateName: 'AimworkSpace',
   url: 'https://aimwork.space',
   image: 'https://aimwork.space/assets/og.jpg',
   description: PREVIEW,
-  areaServed: 'Worldwide',
-  priceRange: '$250-$800',
-  currenciesAccepted: 'USD',
+  jobTitle: 'Full stack developer',
   knowsLanguage: ['en', 'ru'],
-  sameAs: ['https://t.me/sickbuddy'],
-  contactPoint: {
-    '@type': 'ContactPoint',
-    contactType: 'sales',
-    url: 'https://t.me/sickbuddy',
-    availableLanguage: ['en', 'ru']
-  },
-  hasOfferCatalog: {
-    '@type': 'OfferCatalog',
-    name: 'Services',
-    itemListElement: ['Sites', 'Telegram bots', 'Automation', 'Custom code'].map((name) => ({
-      '@type': 'Offer',
-      priceCurrency: 'USD',
-      itemOffered: { '@type': 'Service', name }
-    }))
-  }
+  knowsAbout: ['Python', 'Rust', 'C++', 'TypeScript', 'React', 'Next.js', 'SQL', 'Telegram bots'],
+  sameAs: ['https://t.me/aimwork', 'https://github.com/canary443']
 };
 
 export const viewport: Viewport = {
@@ -85,14 +69,14 @@ export const viewport: Viewport = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  // same pick as the page: saved choice first, else what the browser asks for,
-  // so <html lang> never disagrees with the text on screen
-  const [jar, head] = await Promise.all([cookies(), headers()]);
-  const lang = pickLang(jar.get('zx_lang')?.value, head.get('accept-language'));
+  // same pick as the page: en unless the visitor chose ru, so <html lang> never
+  // disagrees with the text on screen
+  const jar = await cookies();
+  const lang = pickLang(jar.get('zx_lang')?.value);
   return (
     <html lang={lang}>
       <head>
-        {/* a reload starts at the top: no flash of the hero then a jump down */}
+        {/* a reload starts at the top, never mid page */}
         <script dangerouslySetInnerHTML={{ __html: "history.scrollRestoration='manual'" }} />
         {/* fonts live in public/fonts, see fonts.css. only the two faces of the first paint are preloaded */}
         <link rel="preload" as="font" type="font/woff2" crossOrigin="anonymous" href="/fonts/satoshi-400.woff2" />

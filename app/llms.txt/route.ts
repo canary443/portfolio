@@ -14,15 +14,13 @@ export async function GET() {
   const lines: string[] = [
     '# AimworkSpace',
     '',
-    '> One person full stack studio. Sites, Telegram bots and automation.',
-    '> Built in 3-14 days, fixed price per project, reply in under 24 hours.',
+    '> Personal page of a full stack developer. Sites, Telegram bots and automation.',
     '',
     `- Site: ${SITE}`,
     `- Telegram: https://t.me/${d.telegram}`,
     `- GitHub: https://github.com/${d.github}`,
     `- Email: ${d.email}`,
     '- Languages: English, Russian',
-    '- Prices are in USD, the site also shows the rouble equivalent',
     '',
     '## About',
     '',
@@ -39,10 +37,7 @@ export async function GET() {
 
   if (d.works.length) {
     lines.push('## Work', '');
-    d.works.forEach(w => {
-      const tail = [w.price, w.date].filter(Boolean).join(', ');
-      lines.push(`- ${w.title}${tail ? ` (${tail})` : ''}: ${w.desc}`);
-    });
+    d.works.forEach(w => lines.push(`- ${w.title}${w.date ? ` (${w.date})` : ''}: ${w.desc}`));
     lines.push('');
   }
 
@@ -50,11 +45,6 @@ export async function GET() {
     lines.push('## Team projects', '');
     d.projects.forEach(p => lines.push(`- ${p.name}, ${p.role}, ${p.from} to ${p.to}`));
     lines.push('');
-  }
-
-  if (d.faq.length) {
-    lines.push('## FAQ', '');
-    d.faq.forEach(f => lines.push(`### ${f.q}`, '', f.a, ''));
   }
 
   return new Response(lines.join('\n'), {

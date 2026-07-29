@@ -16,7 +16,6 @@
 :root {
   --ease: cubic-bezier(.22,1,.36,1);
   --bg: #101010;
-  --hero-bg: #000000;
   --card: #151515;
   --card-2: #161616;
   --hover: #141414;
@@ -31,8 +30,9 @@
   --inv-bg: #f3f3f3;
   --inv-bg-hover: #e2e2e2;
   --inv-text: #101010;
+  /* the page canvas is flat, so the bar carries no surface at the top: any tint
+     there reads as a dark rectangle over the background */
   --nav-bg: rgba(22,22,22,.6);
-  --nav-bg-top: rgba(10,10,10,.5);
   --nav-border: rgba(255,255,255,.12);
   --spot: rgba(255,255,255,.06);
 }
@@ -44,7 +44,7 @@ html, body { margin: 0; padding: 0; }
 html.lenis, html.lenis body { height: auto; }
 .lenis.lenis-smooth { scroll-behavior: auto !important; }
 
-/* hero entrance, staggered */
+/* page entrance, staggered */
 .in0 { animation: zxin .55s var(--ease) both; }
 .in1 { animation: zxin .55s var(--ease) .08s both; }
 .in2 { animation: zxin .55s var(--ease) .16s both; }
@@ -86,8 +86,13 @@ a:hover { color: var(--text-strong); }
 .card-hit:focus-visible { outline: 2px solid var(--muted); outline-offset: -3px; border-radius: 6px; }
 
 /* hover states (inline styles cannot do :hover) */
-.navlnk { color: var(--muted); text-decoration: none; transition: color .15s ease; }
-.navlnk:hover { color: var(--text); }
+/* nav: at the top of the page the bar carries no surface at all. past 40px of
+   scroll it folds into the glass pill - width, height, radius, background and
+   border all cross-fade on the same curve, so it reads as one move */
+.navbar { pointer-events: auto; position: relative; display: flex; align-items: center; gap: 12px; width: 100%; max-width: 1256px; height: 64px; padding: 0 20px; border: 1px solid transparent; border-radius: 0; transition: max-width .45s var(--ease), height .45s var(--ease), border-radius .45s var(--ease), background .45s ease, border-color .45s ease; }
+.navbar[data-sc="1"] { max-width: 790px; height: 52px; border-radius: 9999px; background: var(--nav-bg); border-color: var(--nav-border); backdrop-filter: var(--nav-blur); -webkit-backdrop-filter: var(--nav-blur); }
+.nav-mark { font-size: 16px; letter-spacing: -.01em; white-space: nowrap; user-select: none; }
+
 .pill { display: inline-flex; align-items: center; gap: 9px; background: var(--inv-bg); color: var(--inv-text); border-radius: 9999px; padding: 12px 24px; font-size: 14px; text-decoration: none; white-space: nowrap; border: none; transition: background .15s ease, transform .3s var(--ease); }
 .pill:hover { background: var(--inv-bg-hover); color: var(--inv-text); }
 .pill img { filter: var(--pill-icon-filter, none); }
@@ -110,13 +115,26 @@ a:hover { color: var(--text-strong); }
 .marr { position: absolute; top: 50%; transform: translateY(-50%); width: 34px; height: 34px; border-radius: 99px; background: rgba(10,10,10,.62); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); border: 1px solid rgba(255,255,255,.14); display: flex; align-items: center; justify-content: center; color: #f3f3f3; font-size: 15px; user-select: none; transition: background .15s ease, transform .15s ease; }
 .marr:hover { background: rgba(30,30,30,.85); }
 .marr:active { transform: translateY(-50%) scale(.88); }
-/* width: the row is a button now, it has to stretch like the old div */
-.faqrow { display: flex; align-items: center; gap: 16px; padding: 20px 4px; width: 100%; user-select: none; transition: background .2s ease; }
-.faqrow:hover { background: var(--hover); }
 .partner { opacity: .8; transition: opacity .2s ease, transform .3s cubic-bezier(.22,1,.36,1); }
 .partner:hover { opacity: 1; transform: translateY(-2px); }
-.ftr { display: flex; align-items: center; gap: 6px; color: var(--muted); text-decoration: none; transition: color .15s ease; }
-.ftr:hover { color: var(--text); }
+
+/* the two links that close the page. hover wipes a white fill across the row
+   and a second copy of the same row, clipped the same way, turns black */
+.blink { position: relative; display: block; overflow: hidden; text-decoration: none; color: var(--text); border-top: 1px solid var(--line); transition: transform .3s var(--ease); }
+.blink:last-of-type { border-bottom: 1px solid var(--line); }
+.blink:active { transform: scale(.995); }
+.blink:focus-visible { outline: 2px solid var(--muted); outline-offset: -3px; }
+.blrow { display: flex; align-items: center; gap: 18px; padding: 26px 10px; }
+.blword { display: inline-flex; align-items: center; gap: 15px; font-size: clamp(26px,4vw,48px); line-height: 1.05; letter-spacing: -0.02em; }
+.blmeta { margin-left: auto; display: inline-flex; align-items: center; gap: 10px; font-size: 14px; color: var(--muted); white-space: nowrap; }
+.blfill { position: absolute; inset: 0; background: var(--inv-bg); color: var(--inv-text); clip-path: inset(0 100% 0 0); transition: clip-path .45s var(--ease); }
+.blfill .blmeta { color: rgba(16,16,16,.6); }
+.blarr { display: inline-flex; transition: transform .3s var(--ease); }
+@media (hover: hover) and (pointer: fine) {
+  .blink:hover { color: var(--text); }
+  .blink:hover .blfill { clip-path: inset(0 0 0 0); }
+  .blink:hover .blarr { transform: translate(3px,-3px); }
+}
 .ulink { color: var(--text); text-decoration: underline; text-underline-offset: 3px; transition: color .15s ease; }
 .ulink:hover { color: var(--text-strong); }
 
@@ -140,11 +158,6 @@ a:hover { color: var(--text-strong); }
 .lang_option img { width: 17px; height: 17px; display: block; }
 .lang_option:hover, .lang_option.active { background: #1f1f1f; color: #ffffff; }
 
-/* hide the center nav links on small screens (controls stay visible) */
-@media (max-width: 760px) {
-  .nav-center { display: none !important; }
-}
-
 /* admin */
 .ainput { background: #0c0c0c; border: 1px solid #212121; border-radius: 8px; color: #f3f3f3; font-family: 'Satoshi', 'Onest', sans-serif; font-size: 14px; padding: 10px 12px; transition: border-color .2s ease; }
 .ainput:focus { border-color: #474747; outline: none; }
@@ -166,6 +179,10 @@ a:hover { color: var(--text-strong); }
 /* softer motion for people who asked for it */
 @media (prefers-reduced-motion: reduce) {
   .in0, .in1, .in2, .in3 { animation-name: zxfade; animation-duration: .4s; }
+  /* the fill fades instead of wiping, and nothing slides */
+  .blfill { clip-path: none; opacity: 0; transition: opacity .2s ease; }
+  .blink:hover .blfill { opacity: 1; }
+  .blink, .blarr { transition: none; }
   .marq { animation: none; }
   .card { transition: border-color .2s ease; }
   .svc { transition: background .25s ease, opacity .3s ease; }

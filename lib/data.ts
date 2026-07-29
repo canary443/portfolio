@@ -15,7 +15,7 @@ export interface Work {
   id: string; title: string; titleRu?: string;
   desc: string; descRu?: string;
   imgs?: string[]; img: string | null; video?: string | null;
-  link: string; price: string; date?: string;
+  link: string; date?: string;
   changelog?: LogEntry[];
 }
 export interface TeamProject {
@@ -23,34 +23,11 @@ export interface TeamProject {
   from: string; to: string; link: string; img?: string | null;
   changelog?: LogEntry[];
 }
-export interface FaqItem {
-  id: string; q: string; qRu?: string; a: string; aRu?: string;
-}
-// visual effects, all admin editable. webgl ones need three/ogl and only run
-// on capable devices, so 'image' hero and 'dot' cursor stay the safe fallback.
-export type HeroBg = 'image' | 'gif' | 'pixel-blast' | 'dither' | 'threads' | 'liquid-chrome';
+// the cursor only runs on a fine pointer with motion on, so 'native' is the
+// safe fallback everywhere else
 export type CursorStyle = 'dot' | 'pixel-trail' | 'target' | 'native';
 // cyrillic companion font for the russian locale (latin stays satoshi)
 export type RuFont = 'onest' | 'carlito' | 'jost';
-// hero picture when the background is 'image': ascii cat, dot hands, braille
-// cat, an upload rendered to ascii ('custom'), or a plain photo / gif / video
-// shown as it is ('media')
-export type HeroArt = 'cat' | 'hands' | 'braille' | 'custom' | 'media';
-// color presets for the hero background effects (pixel blast, dither, ...)
-export const HERO_PRESETS: { id: string; label: string; color: string }[] = [
-  { id: 'mono', label: 'Mono', color: '#8f8f8f' },
-  { id: 'lava', label: 'Lava', color: '#ff3b1f' },
-  { id: 'ember', label: 'Ember', color: '#ff7a18' },
-  { id: 'gold', label: 'Gold', color: '#ffb020' },
-  { id: 'toxic', label: 'Toxic', color: '#5dff3b' },
-  { id: 'mint', label: 'Mint', color: '#2ee6b0' },
-  { id: 'ocean', label: 'Ocean', color: '#22c5ff' },
-  { id: 'sky', label: 'Sky', color: '#3b82f6' },
-  { id: 'violet', label: 'Violet', color: '#8b5cf6' },
-  { id: 'magenta', label: 'Magenta', color: '#ff2bd4' },
-  { id: 'crimson', label: 'Crimson', color: '#e11d48' },
-  { id: 'ice', label: 'Ice', color: '#a8d8ff' }
-];
 export interface SiteData {
   about: string; aboutRu?: string;
   // about media: gif/photo in a frame under the about text.
@@ -61,28 +38,13 @@ export interface SiteData {
   // the location line under the about text, and its little flag
   aboutShowBased?: boolean; aboutShowFlag?: boolean;
   telegram: string; github: string; email: string;
-  services: Service[]; works: Work[]; projects: TeamProject[]; faq: FaqItem[];
+  services: Service[]; works: Work[]; projects: TeamProject[];
   // whole blocks the admin can hide. the services nav link goes with its section
   showServices?: boolean;
   showStack?: boolean;
   // effects (flat fields so old saved data backfills from defaults)
-  heroBg?: HeroBg; heroPreset?: string; cursorStyle?: CursorStyle;
-  heroArt?: HeroArt; heroArtCustom?: string | null;
-  // photo / gif / video used as the hero art, kept as it is (no ascii pass).
-  // poster is a still frame for visitors who ask for less motion
-  heroArtMedia?: string | null;
-  heroArtMediaPoster?: string | null;
-  // a video hero art plays its first pass with sound, then loops silent.
-  // false makes it a silent loop from the first frame
-  heroArtMediaSound?: boolean;
-  // percent multiplier on the art's base width, 100 = as designed
-  heroArtScale?: number;
-  // gif / video behind the hero when heroBg is 'gif'. poster is a still frame
-  // shown to people who ask for less motion. opacity in percent
-  heroBgGif?: string | null;
-  heroBgGifPoster?: string | null;
-  heroBgGifOpacity?: number;
-  fxGradualBlur?: boolean; fxHeadlineReveal?: boolean;
+  cursorStyle?: CursorStyle;
+  fxGradualBlur?: boolean;
   fxCardTilt?: boolean;
   fontRu?: RuFont;
   // per string font override for russian ui text; missing key follows fontRu
@@ -104,20 +66,8 @@ export const DEFAULTS: SiteData = {
   email: 'contact@leet-cheats.xyz',
   showServices: true,
   showStack: true,
-  heroBg: 'image',
-  heroArt: 'cat',
-  heroArtCustom: null,
-  heroArtMedia: null,
-  heroArtMediaPoster: null,
-  heroArtMediaSound: true,
-  heroArtScale: 100,
-  heroBgGif: null,
-  heroBgGifPoster: null,
-  heroBgGifOpacity: 100,
-  heroPreset: 'mono',
   cursorStyle: 'dot',
   fxGradualBlur: true,
-  fxHeadlineReveal: true,
   fxCardTilt: false,
   fontRu: 'onest',
   services: [
@@ -127,22 +77,15 @@ export const DEFAULTS: SiteData = {
     { id: 's4', glyph: '</>', icon: null, title: 'Custom code', titleRu: 'Свой код', desc: 'APIs, dashboards, weird ideas welcome.', descRu: 'API, дашборды, нестандартные идеи - welcome.' }
   ],
   works: [
-    { id: 'w1', title: 'Telegram shop bot', desc: 'Storefront bot: catalog, cart, CryptoBot payments, admin notifications.', img: null, link: '', price: '$450', date: '2025.11' },
-    { id: 'w2', title: 'VPN landing', desc: 'One-page landing for a small VPN service. Dark, fast, loads in under a second.', img: null, link: 'https://example.com', price: '$300', date: '2025.08' },
-    { id: 'w3', title: 'Drops monitor', desc: 'Sneaker / restock monitor. Parses 12 shops, pushes to a Telegram channel in under 2s.', img: null, link: '', price: '$250', date: '2025.04' },
-    { id: 'w4', title: 'CRM panel', desc: 'Custom CRM for a delivery crew: orders, courier map, daily CSV exports.', img: null, link: '', price: '$800', date: '2026.02' }
+    { id: 'w1', title: 'Telegram shop bot', desc: 'Storefront bot: catalog, cart, CryptoBot payments, admin notifications.', img: null, link: '', date: '2025.11' },
+    { id: 'w2', title: 'VPN landing', desc: 'One-page landing for a small VPN service. Dark, fast, loads in under a second.', img: null, link: 'https://example.com', date: '2025.08' },
+    { id: 'w3', title: 'Drops monitor', desc: 'Sneaker / restock monitor. Parses 12 shops, pushes to a Telegram channel in under 2s.', img: null, link: '', date: '2025.04' },
+    { id: 'w4', title: 'CRM panel', desc: 'Custom CRM for a delivery crew: orders, courier map, daily CSV exports.', img: null, link: '', date: '2026.02' }
   ],
   projects: [
     { id: 'p1', name: 'darkstat', role: 'backend dev', from: '2024.02', to: '2024.11', link: '' },
     { id: 'p2', name: 'mailer svc', role: 'fullstack', from: '2023.06', to: '2024.01', link: '' },
     { id: 'p3', name: 'unnamed startup', role: 'frontend', from: '2025.03', to: 'now', link: '' }
-  ],
-  faq: [
-    { id: 'f1', q: 'How do we start?', qRu: 'С чего начинаем?', a: 'DM me on Telegram with a short description of the idea. I reply within a day with questions and a quote.', aRu: 'Напиши мне в телеграм пару слов об идее. В течение дня отвечу с вопросами и ценой.' },
-    { id: 'f2', q: 'How do you price?', qRu: 'Как считается цена?', a: 'Fixed price per project after we agree on scope. Half upfront, half on delivery - or we can go through a middleman (escrow) you trust. USDT or RUB.', aRu: 'Фикс за проект после того, как договоримся об объёме. Половина вперёд, половина по готовности - или через гаранта, которому ты доверяешь. USDT или рубли.' },
-    { id: 'f3', q: 'How long does a project take?', qRu: 'Сколько делается проект?', a: 'Small bots and landings: 3-7 days. Bigger things: 1-3 weeks. You get progress updates along the way.', aRu: 'Небольшие боты и лендинги: 3-7 дней. Что-то посерьёзнее: 1-3 недели. По ходу показываю прогресс.' },
-    { id: 'f4', q: 'Do you support projects after launch?', qRu: 'Поддерживаешь после запуска?', a: 'Yes. First two weeks of fixes are free, then a small monthly rate if you want ongoing support.', aRu: 'Да. Первые две недели правок бесплатно, дальше небольшая месячная плата, если нужна поддержка.' },
-    { id: 'f5', q: 'What about hosting?', qRu: 'А хостинг?', a: 'The first month (or the first two weeks of the project) runs on my VPS completely free: I host everything, set it up and help with whatever comes up. Then we move it wherever you want.', aRu: 'Первый месяц (или первые две недели проекта) всё крутится на моём VPS бесплатно: хощу всё сам, настраиваю и помогаю. Потом переносим куда захочешь.' }
   ]
 };
 
@@ -184,18 +127,4 @@ export async function saveRemote(d: SiteData): Promise<{ ok: boolean; err: strin
   } catch {
     return { ok: false, err: 'network error' };
   }
-}
-
-// usd -> rub rate, cached 12h
-export async function fetchRub(): Promise<number> {
-  try {
-    const c = JSON.parse(localStorage.getItem('zx_rub') || 'null');
-    if (c && Date.now() - c.ts < 43200000) return c.v;
-  } catch {}
-  try {
-    const j = await (await fetch('https://open.er-api.com/v6/latest/USD')).json();
-    const v = j?.rates?.RUB;
-    if (v) { localStorage.setItem('zx_rub', JSON.stringify({ v, ts: Date.now() })); return v; }
-  } catch {}
-  return 95;
 }

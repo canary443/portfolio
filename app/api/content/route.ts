@@ -15,7 +15,7 @@ const noStore = { 'cache-control': 'no-store' };
 
 // fields the page renders as text, and lists of items it maps over
 const TEXT_KEYS = ['about', 'telegram', 'github', 'email'] as const;
-const LIST_KEYS = ['services', 'works', 'projects', 'faq'] as const;
+const LIST_KEYS = ['services', 'works', 'projects'] as const;
 
 // light shape check: only what the page would crash on. extra keys are fine,
 // the content model keeps growing. returns an error text or null when ok.

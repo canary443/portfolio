@@ -4,29 +4,21 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   loadData, saveData, resetData, loadRemote, saveRemote, DEFAULTS,
-  SiteData, Service, Work, TeamProject, FaqItem, LogEntry, HeroBg, CursorStyle, RuFont, HeroArt, HERO_PRESETS
+  SiteData, Service, Work, TeamProject, LogEntry, CursorStyle, RuFont
 } from '@/lib/data';
-import { shrinkImage, dataUrlKb, uploadMedia, fileToDataUrl, firstFrame, isVideoSrc, importUrl, inStorage } from '@/lib/img';
-import { renderAscii, renderTextArt } from '@/lib/ascii';
+import { shrinkImage, dataUrlKb, uploadMedia, fileToDataUrl, importUrl, inStorage } from '@/lib/img';
 import { T, type Dict } from '@/lib/i18n';
 
 // interface strings editable in the i18n section (key -> friendly label)
 const I18N_FIELDS: [keyof Dict, string][] = [
-  ['heroT', 'Hero heading'], ['heroSub', 'Hero subheading'],
-  ['start', 'Button: start'], ['view', 'Button: view work'],
-  ['navS', 'Nav: services'], ['navP', 'Nav: projects'], ['navC', 'Nav: contact'],
   ['svcH', 'Services heading'], ['projH', 'Projects heading'],
-  ['aboutH', 'About heading'], ['based', 'About: location chip'],
-  ['faqH', 'FAQ heading'], ['ctH', 'Contact heading'], ['ctSub', 'Contact subheading'],
-  ['dm', 'Contact: dm text'], ['feat', 'Featured-in label'], ['chlog', 'Changelog label'],
-  ['team', 'Badge: team project'], ['madeFor', 'Meta: made for'], ['photoSoon', 'Placeholder: no pic'],
-  ['open', 'Modal: open button'], ['close', 'Modal: close button'], ['copied', 'Toast: copied'],
-  ['chat', 'Chat label']
+  ['aboutH', 'About heading'], ['based', 'About: location chip'], ['chlog', 'Changelog label'],
+  ['team', 'Badge: team project'], ['photoSoon', 'Placeholder: no pic'],
+  ['open', 'Modal: open button'], ['close', 'Modal: close button']
 ];
 
 // effect controls, rendered in the settings page
-type FxKey = 'fxGradualBlur' | 'fxHeadlineReveal' | 'fxCardTilt';
-const HERO_BG_OPTS: [HeroBg, string][] = [['image', 'Art only'], ['gif', 'GIF / video'], ['pixel-blast', 'Pixel blast'], ['dither', 'Dither'], ['threads', 'Threads'], ['liquid-chrome', 'Liquid chrome']];
+type FxKey = 'fxGradualBlur' | 'fxCardTilt';
 const CURSOR_OPTS: [CursorStyle, string][] = [['dot', 'Dot'], ['pixel-trail', 'Pixel trail'], ['target', 'Target'], ['native', 'Native']];
 // whole page blocks the owner can switch off
 type SectionKey = 'showServices' | 'showStack';
@@ -36,55 +28,9 @@ const SECTION_TOGGLES: [SectionKey, string, string][] = [
 ];
 const FX_TOGGLES: [FxKey, string, boolean][] = [
   ['fxGradualBlur', 'Gradual blur seams', true],
-  ['fxHeadlineReveal', 'Hero headline reveal', true],
   ['fxCardTilt', 'Project card tilt', false]
 ];
-// hero picture options for the 'image' background mode
-const HERO_ART_OPTS: [HeroArt, string][] = [
-  ['cat', 'Ascii cat'], ['braille', 'Braille cat'], ['hands', 'Dot hands'],
-  ['custom', 'Ascii from photo'], ['media', 'Photo / GIF / video']
-];
-// the color presets only tint the webgl backgrounds
-const WEBGL_BGS: HeroBg[] = ['pixel-blast', 'dither', 'threads', 'liquid-chrome'];
-// what each hero art option means, shown under the row
-const ART_HINT: Record<HeroArt, string> = {
-  cat: 'the built-in ascii cat',
-  braille: 'the built-in braille cat',
-  hands: 'the built-in dot-art hands',
-  custom: 'your photo, redrawn in the same ascii style. you can also paste ready ascii or braille art',
-  media: 'your photo, gif or video, shown as it is - no ascii pass'
-};
 
-// one option chip. filled border marks the active choice
-function Chip({ on, onClick, children, pad = '6px 14px' }: { on?: boolean; onClick: () => void; children: React.ReactNode; pad?: string }) {
-  return (
-    <span
-      className="aghost"
-      style={{ padding: pad, fontSize: 13, borderColor: on ? '#474747' : '#2a2a2a', color: on ? '#f3f3f3' : '#9c9c9c' }}
-      onClick={onClick}
-    >{children}</span>
-  );
-}
-// label on the left, controls on the right
-function Row({ label, children, top }: { label: string; children: React.ReactNode; top?: boolean }) {
-  return (
-    <div style={{ display: 'flex', alignItems: top ? 'flex-start' : 'center', gap: 12, padding: '10px 0' }}>
-      <span style={{ fontSize: 14, width: 150, paddingTop: top ? 6 : 0, flexShrink: 0 }}>{label}</span>
-      <div style={{ flex: 1, minWidth: 0 }}>{children}</div>
-    </div>
-  );
-}
-// small grey explanation under a row
-function Hint({ children }: { children: React.ReactNode }) {
-  return <div style={{ marginTop: 6, fontSize: 12, color: '#474747', lineHeight: 1.5 }}>{children}</div>;
-}
-// media preview box, plays a video the same way the site does
-function Preview({ src, w = 190 }: { src: string; w?: number }) {
-  const st: React.CSSProperties = { marginTop: 10, width: w, aspectRatio: '16/9', objectFit: 'cover', borderRadius: 8, border: '1px solid #212121', display: 'block', background: '#000' };
-  return isVideoSrc(src)
-    ? <video src={src} muted loop autoPlay playsInline style={st} />
-    : <img src={src} alt="" style={st} />;
-}
 // aspect choices for the about media; auto keeps the natural ratio
 const ABOUT_ASPECTS: [string, string][] = [['16/9', '16:9'], ['4/3', '4:3'], ['1/1', '1:1'], ['3/4', '3:4'], ['auto', 'Auto']];
 // cyrillic font options; the stack matches the one the site applies for ru
@@ -94,12 +40,12 @@ const RU_FONT_OPTS: [RuFont, string, string][] = [
   ['jost', 'Jost', "'Jost', sans-serif"]
 ];
 
-type Sec = 'about' | 'services' | 'works' | 'projects' | 'faq' | 'settings' | 'i18n' | 'preview';
+type Sec = 'about' | 'services' | 'works' | 'projects' | 'settings' | 'i18n' | 'preview';
 type Form = Record<string, string>;
 
 const NAV: [Sec, string][] = [
-  ['about', 'About'], ['services', 'Services'], ['works', 'For sale'],
-  ['projects', 'Team projects'], ['faq', 'FAQ'], ['settings', 'Settings'],
+  ['about', 'About'], ['services', 'Services'], ['works', 'Work'],
+  ['projects', 'Team projects'], ['settings', 'Settings'],
   ['i18n', 'Interface text'], ['preview', 'Live preview']
 ];
 
@@ -109,8 +55,7 @@ const SECTION_KEYS: Partial<Record<Sec, (keyof SiteData)[]>> = {
   services: ['services'],
   works: ['works'],
   projects: ['projects'],
-  faq: ['faq'],
-  settings: ['telegram', 'github', 'email', 'showServices', 'showStack', 'heroBg', 'heroArt', 'heroArtCustom', 'heroArtMedia', 'heroArtMediaPoster', 'heroArtMediaSound', 'heroArtScale', 'heroBgGif', 'heroBgGifPoster', 'heroBgGifOpacity', 'heroPreset', 'cursorStyle', 'fxGradualBlur', 'fxHeadlineReveal', 'fxCardTilt', 'fontRu'],
+  settings: ['telegram', 'github', 'email', 'showServices', 'showStack', 'cursorStyle', 'fxGradualBlur', 'fxCardTilt', 'fontRu'],
   i18n: ['i18n', 'i18nFontRu']
 };
 // every key some page owns; a whole-site import restores all of them
@@ -167,14 +112,6 @@ export default function Admin() {
   const [device, setDevice] = useState<'desktop' | 'mobile'>('desktop');
   // live slider value for the about image width; saved when the drag ends
   const [aboutW, setAboutW] = useState<number | null>(null);
-  // same for the hero art scale
-  const [heroScale, setHeroScale] = useState<number | null>(null);
-  // same for how bright the background gif is
-  const [bgOpacity, setBgOpacity] = useState<number | null>(null);
-  // paste-your-own ascii art box
-  const [asciiOpen, setAsciiOpen] = useState(false);
-  const [asciiText, setAsciiText] = useState('');
-  const [asciiUp, setAsciiUp] = useState(true);
 
   const flashT = useRef<ReturnType<typeof setTimeout>>(undefined);
   const aboutRef = useRef<HTMLTextAreaElement>(null);
@@ -187,9 +124,6 @@ export default function Admin() {
   const importRef = useRef<HTMLInputElement>(null);
   const importSec = useRef<Sec>('about');
   const aboutImgRef = useRef<HTMLInputElement>(null);
-  const heroImgRef = useRef<HTMLInputElement>(null);
-  const heroRawRef = useRef<HTMLInputElement>(null);
-  const bgGifRef = useRef<HTMLInputElement>(null);
 
   // defined before the effects so they can call it
   const show = (msg: string) => {
@@ -254,9 +188,6 @@ export default function Admin() {
   if (!data || auth === null) return null;
 
   const locked = wait > 0;
-  // current hero picks, used all over the effects page
-  const bg: HeroBg = data.heroBg || 'image';
-  const art: HeroArt = data.heroArt || 'cat';
 
   // the server copy is the real one. localStorage is only a cache, so a full
   // one must never block a save.
@@ -310,91 +241,10 @@ export default function Admin() {
     const url = await uploadMedia(dataUrl);
     persist({ ...data, aboutImg: url });
   };
-  // custom hero picture: whatever gets uploaded is rendered into ascii art
-  // first, so the hero always keeps the glyphs-on-black look
-  const onHeroMedia = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    e.target.value = '';
-    if (!f) return;
-    try {
-      const dataUrl = await shrinkImage(f, 1600, 'image/jpeg', 900);
-      const ascii = await renderAscii(dataUrl);
-      if (dataUrlKb(ascii) > 4200) { setErr('not saved: the picture is too detailed, try a smaller one'); return; }
-      const url = await uploadMedia(ascii);
-      persist({ ...data, heroArt: 'custom', heroArtCustom: url });
-    } catch {
-      setErr('not saved: could not read that picture');
-    }
-  };
-  // upload a photo / gif / video as it is. an animated file never goes on a
-  // canvas or it loses its frames, a plain photo is shrunk. a still frame is
-  // stored next to it for visitors who ask for less motion.
-  // returns null when the file could not reach storage
-  const putMediaFile = async (f: File): Promise<{ url: string; poster: string | null } | null> => {
-    const vid = f.type.startsWith('video/');
-    const asIs = vid || /^image\/(gif|webp|apng)$/.test(f.type);
-    const raw = asIs ? await fileToDataUrl(f) : await shrinkImage(f, 1920, 'image/jpeg', 12000);
-    const url = await uploadMedia(raw);
-    // storage is a must here: a gif inside the content file blows the 4mb cap
-    if (url.startsWith('data:')) return null;
-    // a video shows its own first frame when paused, so it needs no poster
-    const still = vid ? null : await firstFrame(f);
-    const poster = still ? await uploadMedia(still) : null;
-    return { url, poster: poster && !poster.startsWith('data:') ? poster : null };
-  };
-  // gif / video behind the hero
-  const onBgMedia = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    e.target.value = '';
-    if (!f) return;
-    if (f.size > 12000000) { setErr('not saved: file is over ~12mb, compress it first'); return; }
-    show('uploading background...');
-    try {
-      const m = await putMediaFile(f);
-      if (!m) { setErr('not saved: storage upload failed, try again'); return; }
-      persist({ ...data, heroBg: 'gif', heroBgGif: m.url, heroBgGifPoster: m.poster }, 'background saved');
-    } catch {
-      setErr('not saved: could not read that file');
-    }
-  };
-  // photo / gif / video as the hero art, kept as it is (no ascii pass)
-  const onHeroRaw = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    e.target.value = '';
-    if (!f) return;
-    if (f.size > 12000000) { setErr('not saved: file is over ~12mb, compress it first'); return; }
-    show('uploading hero art...');
-    try {
-      const m = await putMediaFile(f);
-      if (!m) { setErr('not saved: storage upload failed, try again'); return; }
-      persist({ ...data, heroArt: 'media', heroArtMedia: m.url, heroArtMediaPoster: m.poster }, 'hero art saved');
-    } catch {
-      setErr('not saved: could not read that file');
-    }
-  };
-  const commitBgOpacity = async () => {
-    if (bgOpacity === null || bgOpacity === (data.heroBgGifOpacity ?? 100)) { setBgOpacity(null); return; }
-    if (await persist({ ...data, heroBgGifOpacity: bgOpacity })) setBgOpacity(null);
-  };
   // save the slider width once the user lets go of it
   const commitAboutW = async () => {
     if (aboutW === null || aboutW === (data.aboutImgW || 252)) { setAboutW(null); return; }
     if (await persist({ ...data, aboutImgW: aboutW })) setAboutW(null);
-  };
-  // pasted ascii / braille art: rendered on a canvas and saved as the custom art
-  const saveAsciiArt = async () => {
-    try {
-      const png = renderTextArt(asciiText, asciiUp);
-      if (dataUrlKb(png) > 4200) { setErr('not saved: the art is too big'); return; }
-      const url = await uploadMedia(png);
-      if (await persist({ ...data, heroArt: 'custom', heroArtCustom: url })) { setAsciiOpen(false); setAsciiText(''); }
-    } catch {
-      setErr('not saved: paste some ascii art first');
-    }
-  };
-  const commitHeroScale = async () => {
-    if (heroScale === null || heroScale === (data.heroArtScale || 100)) { setHeroScale(null); return; }
-    if (await persist({ ...data, heroArtScale: heroScale })) setHeroScale(null);
   };
   const F = (k: string) => form[k] || '';
   const onF = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
@@ -597,7 +447,7 @@ export default function Admin() {
     if (await persist({ ...data, services: upsert(data.services, item) })) clearForm();
   };
   const saveWork = async () => {
-    if (!F('title').trim() || !F('price').trim()) return;
+    if (!F('title').trim()) return;
     let vid = video || F('videoUrl').trim() || null;
     // a pasted link is copied into our storage first: discord and most cdn
     // links are signed and stop working in a day, and the card goes black
@@ -608,7 +458,7 @@ export default function Admin() {
       if (r.url) vid = r.url;
       else warn = 'video not copied to storage: ' + r.err + '. saved as a plain link, it can stop working';
     }
-    const item: Work = { id: editId || 'w' + Date.now(), title: F('title').trim(), titleRu: F('titleRu').trim(), price: F('price').trim(), date: F('date').trim(), link: F('link').trim(), video: vid, desc: F('desc').trim(), descRu: F('descRu').trim(), imgs, img: imgs[0] || null, changelog: logs };
+    const item: Work = { id: editId || 'w' + Date.now(), title: F('title').trim(), titleRu: F('titleRu').trim(), date: F('date').trim(), link: F('link').trim(), video: vid, desc: F('desc').trim(), descRu: F('descRu').trim(), imgs, img: imgs[0] || null, changelog: logs };
     if (await persist({ ...data, works: upsert(data.works, item) })) {
       clearForm();
       if (warn) setErr(warn);
@@ -628,13 +478,8 @@ export default function Admin() {
     setLogs(p => [...p, { id: 'l' + Date.now(), date: F('logDate').trim() || today, text: F('logText').trim(), textRu: F('logTextRu').trim() }]);
     setForm(f => ({ ...f, logDate: '', logText: '', logTextRu: '' }));
   };
-  const saveFaq = async () => {
-    if (!F('fq').trim() || !F('fa').trim()) return;
-    const item: FaqItem = { id: editId || 'f' + Date.now(), q: F('fq').trim(), a: F('fa').trim(), qRu: F('fqRu').trim(), aRu: F('faRu').trim() };
-    if (await persist({ ...data, faq: upsert(data.faq, item) })) clearForm();
-  };
 
-  const counts: Partial<Record<Sec, number>> = { services: data.services.length, works: data.works.length, projects: data.projects.length, faq: data.faq.length };
+  const counts: Partial<Record<Sec, number>> = { services: data.services.length, works: data.works.length, projects: data.projects.length };
 
   const inp = (k: string, ph: string, style?: React.CSSProperties) => (
     <input className="ainput" value={F(k)} onChange={onF(k)} placeholder={ph} style={style} />
@@ -813,8 +658,8 @@ export default function Admin() {
 
           {/* works */}
           {sec === 'works' && <>
-            <div style={{ fontSize: 22 }}>Projects for sale</div>
-            <div style={{ margin: '4px 0 14px', fontSize: 13, color: '#9c9c9c' }}>Photos (carousel) + optional video + link + description + price + date.</div>
+            <div style={{ fontSize: 22 }}>Work</div>
+            <div style={{ margin: '4px 0 14px', fontSize: 13, color: '#9c9c9c' }}>Photos (carousel) + optional video + link + description + date.</div>
             {data.works.map(w => {
               const cover = w.imgs?.[0] || w.img;
               return (
@@ -824,12 +669,11 @@ export default function Admin() {
                     ? <img src={cover} loading="lazy" alt="" style={{ width: 52, height: 34, objectFit: 'cover', borderRadius: 6, border: '1px solid #212121' }} />
                     : <span style={{ width: 52, height: 34, border: '1px dashed #2a2a2a', borderRadius: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: '#474747' }}>no img</span>}
                   <span style={{ fontSize: 15 }}>{w.title}</span>
-                  <span style={{ fontSize: 13, color: '#9c9c9c' }}>{w.price}</span>
                   <span style={{ fontSize: 13, color: '#474747' }}>{w.date}</span>
                   <span style={{ marginLeft: 'auto', display: 'flex', gap: 14 }}>
                     <span className="aedit" onClick={() => {
                       setEditId(w.id);
-                      setForm({ title: w.title, titleRu: w.titleRu || '', price: w.price, date: w.date || '', link: w.link, videoUrl: w.video && !w.video.startsWith('data:') ? w.video : '', desc: w.desc, descRu: w.descRu || '' });
+                      setForm({ title: w.title, titleRu: w.titleRu || '', date: w.date || '', link: w.link, videoUrl: w.video && !w.video.startsWith('data:') ? w.video : '', desc: w.desc, descRu: w.descRu || '' });
                       setImgs(w.imgs?.length ? w.imgs : w.img ? [w.img] : []);
                       setVideo(w.video?.startsWith('data:') ? w.video : '');
                       setLogs(w.changelog || []);
@@ -844,7 +688,6 @@ export default function Admin() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <div style={{ display: 'flex', gap: 10 }}>
                   {inp('title', 'title *', { flex: 2 })}
-                  {inp('price', 'price ($450) *', { flex: 1 })}
                   {inp('date', 'date (2025.06)', { flex: 1 })}
                 </div>
                 {inp('link', 'link (optional)')}
@@ -924,35 +767,6 @@ export default function Admin() {
             </div>
           </>}
 
-          {/* faq */}
-          {sec === 'faq' && <>
-            <div style={{ fontSize: 22 }}>FAQ</div>
-            <div style={{ margin: '4px 0 14px', fontSize: 13, color: '#9c9c9c' }}>Questions on the main page. Drag ⋮⋮ to reorder.</div>
-            {data.faq.map(q => (
-              <div key={q.id} className="arow" {...dragRow('faq', q.id)}>
-                <span style={{ color: '#474747', cursor: 'grab', fontSize: 13, userSelect: 'none', flex: 'none' }}>⋮⋮</span>
-                <span style={{ fontSize: 15, flex: 1, minWidth: 0 }}>{q.q}</span>
-                <span style={{ display: 'flex', gap: 14 }}>
-                  <span className="aedit" onClick={() => { setEditId(q.id); setForm({ fq: q.q, fa: q.a, fqRu: q.qRu || '', faRu: q.aRu || '' }); }}>edit</span>
-                  <span className="adel" onClick={() => del('faq', q.id)}>delete</span>
-                </span>
-              </div>
-            ))}
-            <div style={{ marginTop: 20, background: '#151515', border: '1px solid #212121', borderRadius: 12, padding: 18, maxWidth: 640 }}>
-              <div style={{ fontSize: 13, color: '#9c9c9c', marginBottom: 12 }}>{editId ? 'Edit question' : 'Add question'}</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {inp('fq', 'question (EN) *')}
-                <textarea className="ainput" value={F('fa')} onChange={onF('fa')} rows={3} placeholder="answer (EN) *" style={{ lineHeight: 1.5 }} />
-                {inp('fqRu', 'вопрос (RU, опц.)')}
-                <textarea className="ainput" value={F('faRu')} onChange={onF('faRu')} rows={3} placeholder="ответ (RU, опц.)" style={{ lineHeight: 1.5 }} />
-                <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
-                  <span className="abtn" onClick={saveFaq}>{editId ? 'Save changes' : 'Add question'}</span>
-                  {editId && <span className="aghost" onClick={clearForm}>Cancel</span>}
-                </div>
-              </div>
-            </div>
-          </>}
-
           {/* settings */}
           {sec === 'settings' && <>
             <div style={{ fontSize: 22 }}>Settings</div>
@@ -971,141 +785,7 @@ export default function Admin() {
             {/* effects: saved on click, no separate save button */}
             <div style={{ marginTop: 40, borderTop: '1px solid #212121', paddingTop: 20, maxWidth: 640 }}>
               <div style={{ fontSize: 16 }}>Effects</div>
-              <div style={{ margin: '4px 0 18px', fontSize: 13, color: '#9c9c9c', lineHeight: 1.6 }}>Saved as you click, no save button. The hero has two layers: a background that fills the whole block, and the art picture under the headline. Only the controls of the layer you picked are shown.</div>
-
-              {/* hidden pickers for the two hero uploads */}
-              <input ref={bgGifRef} type="file" accept="image/gif,image/webp,image/png,image/jpeg,video/mp4,video/webm" style={{ display: 'none' }} onChange={onBgMedia} />
-              <input ref={heroImgRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={onHeroMedia} />
-              <input ref={heroRawRef} type="file" accept="image/gif,image/webp,image/png,image/jpeg,video/mp4,video/webm" style={{ display: 'none' }} onChange={onHeroRaw} />
-
-              <Row label="Hero background">
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  {HERO_BG_OPTS.map(([val, label]) => (
-                    <Chip key={val} on={bg === val} onClick={() => {
-                      // picking gif with nothing uploaded yet asks for the file
-                      if (val === 'gif' && !data.heroBgGif) { bgGifRef.current?.click(); return; }
-                      persist({ ...data, heroBg: val });
-                    }}>{label}</Chip>
-                  ))}
-                </div>
-                <Hint>{bg === 'image'
-                  ? 'no background layer, only the hero art below'
-                  : bg === 'gif'
-                    ? 'your gif or video fills the hero. runs on phones and safari too'
-                    : 'a webgl effect fills the hero. desktop with motion on only - everything else falls back to the hero art below'}</Hint>
-              </Row>
-
-              {/* the background file and its knobs, only for the gif mode */}
-              {bg === 'gif' && (
-                <Row label="Background file" top>
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                    <Chip onClick={() => bgGifRef.current?.click()}>{data.heroBgGif ? 'Replace…' : 'Upload…'}</Chip>
-                    {!!data.heroBgGif && (
-                      <span className="adel" onClick={() => persist({ ...data, heroBgGif: null, heroBgGifPoster: null, heroBg: 'image' })}>remove</span>
-                    )}
-                  </div>
-                  <Hint>gif, webp, png or a small mp4/webm, up to ~12mb. an mp4 weighs a lot less than a gif of the same length. reduced-motion visitors see a still frame</Hint>
-                  {!!data.heroBgGif && <>
-                    {/* how bright it sits behind the headline; saved on release */}
-                    <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <span style={{ fontSize: 13, width: 60, color: '#9c9c9c' }}>Opacity</span>
-                      <input type="range" min={10} max={100} step={5} value={bgOpacity ?? data.heroBgGifOpacity ?? 100}
-                        onChange={e => setBgOpacity(Number(e.target.value))}
-                        onPointerUp={commitBgOpacity} onKeyUp={commitBgOpacity} onBlur={commitBgOpacity}
-                        style={{ width: 220, accentColor: '#f3f3f3' }} />
-                      <span style={{ fontSize: 13, color: '#9c9c9c', width: 52 }}>{bgOpacity ?? data.heroBgGifOpacity ?? 100}%</span>
-                    </div>
-                    <Preview src={data.heroBgGif} />
-                  </>}
-                </Row>
-              )}
-
-              {/* the color presets do nothing outside the webgl backgrounds */}
-              {WEBGL_BGS.includes(bg) && (
-                <Row label="Effect color" top>
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    {HERO_PRESETS.map(p => (
-                      <Chip key={p.id} on={(data.heroPreset || 'mono') === p.id} pad="6px 12px" onClick={() => persist({ ...data, heroPreset: p.id })}>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}>
-                          <span style={{ width: 10, height: 10, borderRadius: 99, background: p.color, display: 'inline-block', boxShadow: '0 0 0 1px rgba(255,255,255,.12)' }} />{p.label}
-                        </span>
-                      </Chip>
-                    ))}
-                  </div>
-                </Row>
-              )}
-
-              {/* the picture in the hero. it is also what weak devices get
-                  instead of a webgl background */}
-              <Row label="Hero art" top>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                  {HERO_ART_OPTS.map(([val, label]) => (
-                    <Chip key={val} on={art === val} onClick={() => {
-                      // an option with no file yet asks for one first
-                      if (val === 'custom' && !data.heroArtCustom) { heroImgRef.current?.click(); return; }
-                      if (val === 'media' && !data.heroArtMedia) { heroRawRef.current?.click(); return; }
-                      persist({ ...data, heroArt: val });
-                    }}>{label}</Chip>
-                  ))}
-                </div>
-                <Hint>{ART_HINT[art]}</Hint>
-
-                {/* upload controls belong to the picked option, so only one
-                    set is on screen at a time */}
-                {art === 'custom' && (
-                  <div style={{ marginTop: 10, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                    <Chip onClick={() => heroImgRef.current?.click()}>{data.heroArtCustom ? 'Replace photo…' : 'Upload photo…'}</Chip>
-                    <Chip on={asciiOpen} onClick={() => setAsciiOpen(o => !o)}>Paste ascii…</Chip>
-                    {!!data.heroArtCustom && (
-                      <span className="adel" onClick={() => persist({ ...data, heroArtCustom: null, heroArt: 'cat' })}>remove</span>
-                    )}
-                  </div>
-                )}
-                {art === 'custom' && asciiOpen && (
-                  <div style={{ marginTop: 10 }}>
-                    <textarea className="ainput" value={asciiText} onChange={e => setAsciiText(e.target.value)} rows={8} placeholder={'paste ascii or braille art here'} spellCheck={false} style={{ width: '100%', maxWidth: 520, fontFamily: 'Menlo, monospace', fontSize: 12, lineHeight: 1.2, whiteSpace: 'pre', overflowX: 'auto' }} />
-                    <div style={{ marginTop: 8, display: 'flex', gap: 8, alignItems: 'center' }}>
-                      {/* upscale draws the art across the full width; off keeps a small terminal size */}
-                      <Chip on={asciiUp} onClick={() => setAsciiUp(u => !u)}>Upscale: {asciiUp ? 'On' : 'Off'}</Chip>
-                      <span className="abtn" style={{ padding: '6px 16px', fontSize: 13 }} onClick={saveAsciiArt}>Render &amp; save</span>
-                    </div>
-                  </div>
-                )}
-                {art === 'media' && (
-                  <div style={{ marginTop: 10, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                    <Chip onClick={() => heroRawRef.current?.click()}>{data.heroArtMedia ? 'Replace…' : 'Upload…'}</Chip>
-                    {!!data.heroArtMedia && (
-                      <span className="adel" onClick={() => persist({ ...data, heroArtMedia: null, heroArtMediaPoster: null, heroArt: 'cat' })}>remove</span>
-                    )}
-                  </div>
-                )}
-                {art === 'media' && <>
-                  <Hint>photo, gif, webp or a small mp4/webm, up to ~12mb. it keeps its own colors and its animation</Hint>
-                  {/* only a video can make noise, so the switch is for videos */}
-                  {!!data.heroArtMedia && isVideoSrc(data.heroArtMedia) && (
-                    <div style={{ marginTop: 10 }}>
-                      <Chip on={data.heroArtMediaSound !== false} onClick={() => persist({ ...data, heroArtMediaSound: data.heroArtMediaSound === false })}>
-                        Sound on the first play: {data.heroArtMediaSound === false ? 'Off' : 'On'}
-                      </Chip>
-                      <Hint>on: the video runs once with sound, then loops silent like a gif. browsers only allow sound after the visitor clicks somewhere, so before that first click it runs silent and a small mute button shows up while it is audible. off: silent loop from the first frame</Hint>
-                    </div>
-                  )}
-                </>}
-
-                {/* size multiplier for the picked art; saves when the slider is released */}
-                <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <span style={{ fontSize: 13, width: 60, color: '#9c9c9c' }}>Scale</span>
-                  <input type="range" min={50} max={150} step={2} value={heroScale ?? data.heroArtScale ?? 100}
-                    onChange={e => setHeroScale(Number(e.target.value))}
-                    onPointerUp={commitHeroScale} onKeyUp={commitHeroScale} onBlur={commitHeroScale}
-                    style={{ width: 220, accentColor: '#f3f3f3' }} />
-                  <span style={{ fontSize: 13, color: '#9c9c9c', width: 52 }}>{heroScale ?? data.heroArtScale ?? 100}%</span>
-                </div>
-                {art === 'custom' && !!data.heroArtCustom && (
-                  <img src={data.heroArtCustom} alt="" style={{ marginTop: 10, width: 190, borderRadius: 8, border: '1px solid #212121', display: 'block', background: '#000' }} />
-                )}
-                {art === 'media' && !!data.heroArtMedia && <Preview src={data.heroArtMedia} />}
-              </Row>
+              <div style={{ margin: '4px 0 18px', fontSize: 13, color: '#9c9c9c', lineHeight: 1.6 }}>Saved as you click, no save button.</div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0' }}>
                 <span style={{ fontSize: 14, width: 150 }}>Cursor</span>

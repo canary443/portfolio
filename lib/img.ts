@@ -69,20 +69,6 @@ export const dataUrlKb = (s: string) => Math.round(s.length * 0.75 / 1024);
 // read a file as is, for media a canvas would break (video, gif)
 export const fileToDataUrl = readAsDataUrl;
 
-// still first frame of a gif, used when the visitor asks for less motion
-export async function firstFrame(file: File): Promise<string | null> {
-  try {
-    const im = await load(file);
-    return encode(im, 1600, 'image/jpeg', .82);
-  } catch {
-    return null;
-  }
-}
-
-// true when a src needs a <video> tag instead of <img>
-export const isVideoSrc = (s: string) =>
-  /^data:video\//i.test(s) || /\.(mp4|webm|mov)(\?|#|$)/i.test(s);
-
 // post to the upload api. the server picks the extension from the mime
 async function post(body: Record<string, string>): Promise<{ url: string; err: string }> {
   try {
