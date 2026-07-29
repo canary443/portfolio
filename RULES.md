@@ -4,8 +4,8 @@ Mandatory rules for AI agents working in this repo. These rules apply to **commi
 
 ## Git
 1. Commit messages in simple English (A1 level). Short, present tense, lowercase start is fine.
-   - Good: `add faq drag sort`, `fix nav pill width`, `update ru texts`
-   - Bad: `Implemented comprehensive FAQ reordering functionality with drag-and-drop support`
+   - Good: `add card drag sort`, `fix nav pill width`, `update ru texts`
+   - Bad: `Implemented comprehensive card reordering functionality with drag-and-drop support`
 2. Never mention Claude, AI, or any assistant in commits. Never add `Co-Authored-By: Claude <...>` or similar trailers. No emoji, no `🤖`.
 3. Commits always go from the currently active GitHub CLI account (`gh auth status` shows it). Do not change `user.name` / `user.email`, do not use bot identities.
 4. One logical change per commit. No giant mixed commits.
@@ -20,7 +20,7 @@ Mandatory rules for AI agents working in this repo. These rules apply to **commi
 
 ## Content
 1. Every user-facing string exists in EN and RU (RU fields use the `*Ru` suffix and fall back to EN when empty).
-2. Prices: stored as USD (`$450` or `450`). The site shows USD and the RUB conversion together in both locales; the rate comes from the exchange API with a cached fallback.
+2. No prices and no selling copy on the public page. It is a personal portfolio: about, work, two links.
 3. Contacts are data, not hardcoded: telegram / github / email come from the settings stored by `lib/data.ts`.
 4. Secrets never land in code or commits. The admin passphrase lives in the `ADMIN_PASSWORD` env var (`.env.local` locally, Vercel env vars in prod).
 

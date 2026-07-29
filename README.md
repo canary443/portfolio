@@ -1,6 +1,6 @@
 # aimworkspace
 
-personal portfolio site. dark single page + a password gated admin panel. content lives in one `site.json` in a vercel blob store and is read on the server, so the first paint already has the real text; uploaded media goes to supabase storage.
+personal portfolio site. dark single page + a password gated admin panel. the page is about → partner logos → work cards → telegram and github, nothing else. content lives in one `site.json` in a vercel blob store and is read on the server, so the first paint already has the real text; uploaded media goes to supabase storage.
 
 ## stack
 
@@ -8,7 +8,7 @@ personal portfolio site. dark single page + a password gated admin panel. conten
 - `app/page.tsx` is a small server wrapper (reads the content and the language), all public markup lives in `app/site.tsx`
 - vercel blob for the content file, supabase storage for uploaded media
 - lenis for the smooth scroll, motion for the reveals, embla for the media carousels
-- three + ogl for the optional webgl hero backgrounds (fine pointer and real webgl only)
+- three + r3f for the optional pixel-trail cursor (fine pointer and real webgl only)
 - satoshi for type, self-hosted from `public/fonts`; the cyrillic companion for the RU locale is picked in the admin (onest by default, carlito or jost) and can differ per interface string
 - brand icons are inline svg in `components/BrandIcons.tsx`, no cdn at runtime
 
@@ -45,7 +45,7 @@ what the site serves crawlers:
 
 - `/robots.txt` (`app/robots.ts`) - allow everything except `/admin`, `/api` and `/*?preview=`. ai crawlers (GPTBot, ClaudeBot, PerplexityBot and friends) are listed and allowed on purpose: a portfolio wants to be quotable
 - `/sitemap.xml` (`app/sitemap.ts`) - the one url
-- `/llms.txt` (`app/llms.txt/route.ts`) - about, services, work and faq as plain text, built from the live content so it cannot drift. cached for an hour
+- `/llms.txt` (`app/llms.txt/route.ts`) - about, services, work and team projects as plain text, built from the live content so it cannot drift. cached for an hour
 - `app/layout.tsx` - canonical `/`, `index, follow` plus the googlebot preview limits, og/twitter, ProfessionalService json-ld, and the two verification meta tags when the env vars are set
 
 both languages share one url, so there is no hreflang on purpose - `og:locale` is `en_US` with `ru_RU` as the alternate.

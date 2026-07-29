@@ -1,6 +1,8 @@
 # HANDOFF.md
 
-This file is only for AI agents. Where the content lives today, and how to move it to a real database when that day comes. The current app is the source of truth for design and behavior; this file maps it to the production data stack.
+This file is only for AI agents. Where the content lives today, and how to move it to a real database when that day comes.
+
+**2026-07-29:** the public page was cut down to About → partner logos → work → two links. The hero, the faq, the prices and the footer are gone (see CLAUDE.md), so ignore every mention of them below; the schema sketch still lists a `faq` table and a `works.price` column that the model no longer has. The current app is the source of truth for design and behavior; this file maps it to the production data stack.
 
 ## Starting point (what is already built)
 The old version of this file assumed the content still sat in localStorage. That has not been true for a while. As of 2026-07-25:
@@ -31,22 +33,18 @@ create table works (            -- "projects for sale" cards
   id uuid primary key default gen_random_uuid(),
   sort int, title text, title_ru text,
   descr text, descr_ru text,
-  img_urls text[], video_url text, link text, price text, made_date text
+  img_urls text[], video_url text, link text, made_date text
 );
 create table team_projects (
   id uuid primary key default gen_random_uuid(),
   sort int, name text, role text, role_ru text,
   date_from text, date_to text, link text, img_url text
 );
-create table faq (
-  id uuid primary key default gen_random_uuid(),
-  sort int, q text, q_ru text, a text, a_ru text
-);
 ```
 `sort` columns replace array order (the admin drag-reorder writes new sort values).
 Two gaps to close before using this as written: the sketch predates several fields the model now has
 (`works.imgs[]` + `works.video` are covered, but `changelog` on works and team projects is not, and
-neither are the hero / effect / font settings and the per-string i18n overrides). Simplest split:
+neither are the effect / font settings and the per-string i18n overrides). Simplest split:
 one `settings` row with a `jsonb` column for everything that is site-wide, and a `jsonb changelog`
 column per item. All image and video columns hold Supabase Storage urls already, so nothing binary
 ever goes into Postgres.
@@ -56,8 +54,8 @@ ever goes into Postgres.
 - `POST /api/upload` — **built**: data url or foreign link → Supabase Storage, returns the public url, size/type checked server-side.
 - `GET/PUT /api/content` — **built**, but whole-object: it is what the per-entity routes below would replace.
 - `PUT /api/settings`, `PUT /api/about`
-- `POST/PUT/DELETE /api/{services|works|team-projects|faq}`
-- `POST /api/{services|works|faq}/reorder` — array of ids in new order
+- `POST/PUT/DELETE /api/{services|works|team-projects}`
+- `POST /api/{services|works}/reorder` — array of ids in new order
 
 ## Migration path
 Swap the three functions that touch the blob - `readContent` in `lib/content.ts` (server read) and
@@ -68,12 +66,11 @@ components, i18n, motion - stays untouched.
 
 ## Behavior to preserve
 - EN/RU toggle: all `*Ru` fields fall back to EN when empty; the pick is persisted in the `zx_lang` cookie so the server can read it.
-- RU price shows bare value (`$450`), EN shows `made for $450`.
 - Cards without an image show the striped "NO PIC" placeholder.
-- FAQ order = admin drag order.
+- Card and list order = admin drag order.
 - About text formatting: `**bold**`, `*italic*`, `[text](url)`, blank line = spacer (tiny parser in `app/site.tsx`). A link renders as a link only for `http:`, `https:` and `mailto:` — keep that allowlist.
-- Language pick: the `zx_lang` cookie wins, otherwise the server reads `Accept-Language` (`lib/lang.ts`), so `<html lang>` and the text always agree.
-- All motion specifics are documented in DESIGN.md — keep the easings and the curtain/pin scroll exactly.
+- Language pick: english for everyone until the `zx_lang` cookie says `ru` (`lib/lang.ts`), so `<html lang>` and the text always agree. `Accept-Language` is deliberately not read.
+- All motion specifics are documented in DESIGN.md — keep the easings exactly.
 
 ## Nice-to-have after launch
 - Done: og image + description, `sitemap.xml` / `robots.txt`, `@vercel/analytics`.
@@ -101,7 +98,7 @@ re-checked against the code and against the live site on 2026-07-25.
 | Icons came from `cdn.simpleicons.org` | inline SVG in `components/BrandIcons.tsx` (Simple Icons paths, CC0). No runtime CDN left anywhere |
 | Fonts came from Fontshare + Google Fonts | self-hosted: `app/fonts.css` + `public/fonts`, 12 woff2 / 217kb total, `unicode-range` split so a Cyrillic face is fetched only when it is actually used, and only the two first-paint Satoshi faces are preloaded |
 | No `robots.txt` / `sitemap.xml` | `app/robots.ts` (disallow `/admin`, `/api`) and `app/sitemap.ts`, both live |
-| No JSON-LD | a static `ProfessionalService` block in `app/layout.tsx` with the service catalog and price range |
+| No JSON-LD | a static `Person` block in `app/layout.tsx` (it was `ProfessionalService` with a price range until 2026-07-29) |
 | OG description was "@aimwork portfolio" | "Sites, Telegram bots and automation. Built in 3-14 days, reply in under 24h." on both og and twitter, with the square cat image |
 | No analytics | `@vercel/analytics` mounted in the layout |
 | Media was base64 inside `site.json` (~3.8mb, per the note in `lib/content.ts`) | moved. The live json is ~12kb with 31 Supabase storage files and zero `data:` urls (checked over `GET /api/content`). The admin keeps the "Move N files to storage" button in Settings for anything inline that shows up later |
@@ -113,8 +110,8 @@ re-checked against the code and against the live site on 2026-07-25.
 ### Still open - content
 - **No client quotes.** There is no field for one on `Work` or `TeamProject` and nowhere in the
   modal to show it. This is still the highest-leverage change on the page, and it is not code.
-- **5 of the 8 work cards have `-` as the price.** That renders as "made for -" in EN and a bare
-  "-" in RU. Either fill in the number or give the model a real "on request" state instead of a dash.
+- **Two work cards have `-` as their description.** The card then shows a bare dash under the title.
+  Either write a line or leave the field empty so nothing renders.
 
 ### Still open - infra
 - **No cache on the content read.** `app/page.tsx` is `force-dynamic` and `readContent()` runs
@@ -126,12 +123,11 @@ re-checked against the code and against the live site on 2026-07-25.
   inline scripts in `app/layout.tsx`. Full detail in SECURITY.md, checklist item 7.
 - **Uploads are never deleted.** `/api/upload` only ever writes; replacing a card's picture leaves
   the old file in the `media` bucket forever. Nothing breaks, but the bucket grows in one direction.
-- **A custom hero art still has no reserved ratio.** `heroArt: 'custom'` / `'media'` is an admin
-  upload of unknown size, so `aspect-ratio` is left undefined and the hero can shift while it loads.
-  Storing the uploaded file's width/height alongside the url would close it. (The live site uses
-  `media` today, so this one is real, not theoretical.)
+- **The about media has no reserved ratio when its aspect is `auto`.** The admin upload is of unknown
+  size, so the picture can shift the block while it loads. Storing the file's width/height next to the
+  url would close it; picking a fixed aspect in the admin already avoids it.
 - **No `hreflang`, on purpose.** Both languages live on the same url and the switch is client-side,
   so there is no second url to point at. If the RU version ever needs to rank on its own it has to
   become a real route (`/ru`) first - that is the whole task, not a meta tag.
-- The ascii-cat PNG fallback is 642kb, but it only loads when the browser cannot decode the AVIF
-  (283kb) - iOS lockdown mode, basically. Not worth optimising unless that path gets common.
+- The hero art files (the ascii cat, the braille cat, the dot hands) were deleted with the hero on
+  2026-07-29, so the AVIF/PNG fallback question is gone with them.

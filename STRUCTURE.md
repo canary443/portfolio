@@ -3,7 +3,7 @@
 ```
 /
 ├── app/
-│   ├── layout.tsx                # metadata + og/twitter, canonical, search console codes, JSON-LD, <html lang> from cookie/header, analytics
+│   ├── layout.tsx                # metadata + og/twitter, canonical, search console codes, Person JSON-LD, <html lang> from the cookie, analytics
 │   ├── globals.css               # keyframes, hover states, reduced-motion rules
 │   ├── fonts.css                 # @font-face for the self hosted woff2 files (no cdn)
 │   ├── icon.svg                  # favicon
@@ -20,10 +20,6 @@
 │       ├── upload/route.ts       # admin media upload to supabase storage -> public url
 │       └── keepalive/route.ts    # daily cron ping so the free supabase project stays awake
 ├── components/
-│   ├── Dither.tsx                # webgl hero background (three + r3f + postprocessing)
-│   ├── PixelBlast.tsx            # webgl hero background (three + postprocessing)
-│   ├── Threads.tsx               # webgl hero background (ogl)
-│   ├── LiquidChrome.tsx          # webgl hero background (ogl)
 │   ├── PixelTrail.tsx            # webgl cursor trail (r3f + drei)
 │   ├── TargetCursor.tsx          # 4-corner cursor that locks onto targets (gsap)
 │   ├── GradualBlur.tsx           # progressive blur strip, pure css
@@ -31,34 +27,27 @@
 │   ├── MediaCarousel.tsx         # photo / video carousel in the cards and the modal
 │   ├── BrandIcons.tsx            # brand logos as inline svg (simple icons paths, cc0)
 │   ├── fx/                       # the wrappers site.tsx uses
-│   │   ├── HeroFx.tsx            # hero background layer (gif / webgl) + readability scrim
-│   │   ├── HeroArtVideo.tsx      # video hero art: one pass with sound, then a silent loop
-│   │   ├── HeadlineReveal.tsx    # hero headline word reveal (motion)
 │   │   ├── PixelTrailCursor.tsx  # lazy wrapper around PixelTrail
 │   │   └── TargetCursorFx.tsx    # lazy wrapper around TargetCursor
 │   ├── ui/carousel.tsx           # shadcn carousel (embla), used by MediaCarousel
 │   └── animate-ui/               # 4 animated service icons + AnimateIcon controller, slot, reveal
 ├── hooks/use-is-in-view.tsx      # motion useInView wrapper, used by the animate-ui icon controller
 ├── lib/
-│   ├── data.ts                   # types, DEFAULTS, localStorage cache, remote load/save, rub rate fetch
+│   ├── data.ts                   # types, DEFAULTS, localStorage cache, remote load / save
 │   ├── content.ts                # server side read of site.json from the blob store
 │   ├── supabase.ts               # server only supabase client for uploads
 │   ├── session.ts                # admin session token sign / check, shared by the session, content and upload routes
-│   ├── img.ts                    # client media helpers (uploadMedia, importUrl, firstFrame, isVideoSrc)
-│   ├── ascii.ts                  # renders pasted / uploaded art to ascii on a canvas
-│   ├── fx.ts                     # webgl support probe + hex -> rgb helper
-│   ├── lang.ts                   # pickLang(cookie, accept-language)
+│   ├── img.ts                    # client media helpers (uploadMedia, importUrl, shrinkImage)
+│   ├── fx.ts                     # webgl support probe (the pixel-trail cursor)
+│   ├── lang.ts                   # pickLang(cookie): en unless the cookie says ru
 │   ├── i18n.ts                   # EN/RU dictionary
-│   ├── config.ts                 # feature flags (showMap, showAbout, spotlight, grain, adminLink)
+│   ├── config.ts                 # feature flags (spotlight, grain)
 │   └── utils.ts                  # cn() for the shadcn / animate-ui components
 ├── scripts/
 │   ├── check-cursor.mjs          # regression: dot cursor stays scoped and off in safari
 │   └── check-no-magnetic.mjs     # regression: the magnetic button behavior stays removed
 ├── public/
 │   ├── assets/
-│   │   ├── kitokat-ascii-fine.avif # default hero art (ascii cat), .png fallback next to it
-│   │   ├── kitokat-braille.avif  # braille cat hero art (+ .png); kitokat-raw.jpg is the source photo
-│   │   ├── hero-hands.avif       # hero dot-art graphic (+ .png)
 │   │   ├── rigrig.jpg            # default about picture
 │   │   ├── og.jpg                # square link preview image
 │   │   ├── leet-cheats.svg       # partner logo -> https://leet-cheats.xyz
@@ -69,6 +58,7 @@
 ├── vercel.json                   # daily cron for /api/keepalive
 ├── components.json               # shadcn config: registries @animate-ui and @react-bits
 ├── .env.example                  # env template (real values in .env.local)
+├── PRODUCT.md                    # durable product truth (users, purpose, constraints)
 ├── CLAUDE.md                     # agent memory (read first)
 ├── AGENTS.md                     # the same memory for non-Claude agents
 ├── RULES.md                      # mandatory commit/code rules
@@ -92,27 +82,21 @@ Full type: `SiteData` in `lib/data.ts`.
   aboutShowBased, aboutShowFlag,        // the location line and its flag
   telegram, github, email,              // contacts
   services:  [{ id, glyph, icon, title, titleRu, desc, descRu }],
-  works:     [{ id, title, titleRu, desc, descRu, imgs[], img, video, link, price, date, changelog[] }],
+  works:     [{ id, title, titleRu, desc, descRu, imgs[], img, video, link, date, changelog[] }],
   projects:  [{ id, name, role, roleRu, from, to, link, img, changelog[] }],
-  faq:       [{ id, q, qRu, a, aRu }],  // order = display order (drag in admin)
   // appearance, all admin-picked (docs/EFFECTS.md):
-  showServices, showStack,               // whole blocks the admin can hide
-  heroBg, heroPreset, cursorStyle,      // background mode, webgl palette, cursor
-  heroArt, heroArtCustom,               // hero art choice, ascii upload
-  heroArtMedia, heroArtMediaPoster,     // 'media' art: plain photo / gif / video + still frame
-  heroArtMediaSound,                    // video art: one pass with sound, then a silent loop
-  heroArtScale,                         // percent multiplier on the art's base width
-  heroBgGif, heroBgGifPoster, heroBgGifOpacity, // 'gif' background: file, still frame, percent
-  fxGradualBlur, fxHeadlineReveal, fxCardTilt,
+  showServices, showStack,              // whole blocks the admin can hide
+  cursorStyle,                          // dot / pixel-trail / target / native
+  fxGradualBlur, fxCardTilt,
   fontRu, i18nFontRu, i18n              // RU font, per string font, text overrides
   // changelog entry: { id, date, text, textRu } - shown in the project modal
 }
 ```
-Unions: `heroBg` image|gif|pixel-blast|dither|threads|liquid-chrome · `heroArt` cat|hands|braille|custom|media ·
-`cursorStyle` dot|pixel-trail|target|native · `fontRu` onest|carlito|jost. Only `about`, `telegram`, `github`,
-`email`, `services`, `works`, `projects` and `faq` are required - every other field is optional and backfills
-from `DEFAULTS` on a shallow merge.
+Unions: `cursorStyle` dot|pixel-trail|target|native · `fontRu` onest|carlito|jost. Only `about`, `telegram`,
+`github`, `email`, `services`, `works` and `projects` are required - every other field is optional and backfills
+from `DEFAULTS` on a shallow merge. Keys the 2026-07-29 cleanup dropped (`faq`, a work's `price`, every `hero*`
+field, `fxHeadlineReveal`) may still sit in the stored json; they are ignored.
 
-Other client keys: `zx_lang` (en|ru, mirrored into a same-name cookie the server reads), `zx_rub`
-(cached usd->rub rate), `zx_preview` (admin live preview).
+Other client keys: `zx_lang` (en|ru, mirrored into a same-name cookie the server reads),
+`zx_preview` (admin live preview).
 Server session: httpOnly cookie `zx_admin` set by `/api/admin/session`.

@@ -8,4 +8,5 @@ out
 *.tsbuildinfo
 npm-debug.log*
 .playwright-mcp/
+.impeccable/
 codereview.md
